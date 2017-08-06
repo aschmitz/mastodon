@@ -11,6 +11,7 @@ import {
   VideoModal,
   BoostModal,
   ConfirmationModal,
+  MuteModal,
   ReportModal,
   SettingsModal,
 } from '../../../features/ui/util/async-components';
@@ -21,6 +22,7 @@ const MODAL_COMPONENTS = {
   'VIDEO': VideoModal,
   'BOOST': BoostModal,
   'CONFIRM': ConfirmationModal,
+  'MUTE': MuteModal,
   'REPORT': ReportModal,
   'SETTINGS': SettingsModal,
 };

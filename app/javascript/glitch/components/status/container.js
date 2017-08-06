@@ -43,6 +43,7 @@ import {
   blockAccount,
   muteAccount,
 } from '../../../mastodon/actions/accounts';
+import { initMuteModal } from '../../../mastodon/actions/mutes';
 import {
   muteStatus,
   unmuteStatus,
@@ -80,10 +81,6 @@ const messages = defineMessages({
   blockConfirm  : {
     id             : 'confirmations.block.confirm',
     defaultMessage : 'Block',
-  },
-  muteConfirm : {
-    id             : 'confirmations.mute.confirm',
-    defaultMessage : 'Mute',
   },
 });
 
@@ -231,11 +228,7 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
   },
 
   onMute (account) {
-    dispatch(openModal('CONFIRM', {
-      message: <FormattedMessage id='confirmations.mute.message' defaultMessage='Are you sure you want to mute {name}?' values={{ name: <strong>@{account.get('acct')}</strong> }} />,
-      confirm: intl.formatMessage(messages.muteConfirm),
-      onConfirm: () => dispatch(muteAccount(account.get('id'))),
-    }));
+    dispatch(initMuteModal(account));
   },
 
   onMuteConversation (status) {
