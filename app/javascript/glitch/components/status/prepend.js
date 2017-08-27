@@ -59,7 +59,7 @@ export default class StatusPrepend extends React.PureComponent {
     type: PropTypes.string.isRequired,
     account: ImmutablePropTypes.map.isRequired,
     parseClick: PropTypes.func.isRequired,
-    notificationId: PropTypes.number,
+    notificationId: PropTypes.string,
   };
 
 /*

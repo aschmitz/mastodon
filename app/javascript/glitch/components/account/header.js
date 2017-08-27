@@ -89,7 +89,7 @@ export default class AccountHeader extends ImmutablePureComponent {
 
   static propTypes = {
     account  : ImmutablePropTypes.map,
-    me       : PropTypes.number.isRequired,
+    me       : PropTypes.string.isRequired,
     onFollow : PropTypes.func.isRequired,
     intl     : PropTypes.object.isRequired,
   };

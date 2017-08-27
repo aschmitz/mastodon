@@ -31,7 +31,7 @@ export default class ActionBar extends React.PureComponent {
     onDelete: PropTypes.func.isRequired,
     onMention: PropTypes.func.isRequired,
     onReport: PropTypes.func,
-    me: PropTypes.number.isRequired,
+    me: PropTypes.string.isRequired,
     intl: PropTypes.object.isRequired,
   };
 
