@@ -5,7 +5,7 @@ RSpec.describe BatchedRemoveStatusService do
 
   let!(:alice)  { Fabricate(:account) }
   let!(:bob)    { Fabricate(:account, username: 'bob', domain: 'example.com', salmon_url: 'http://example.com/salmon') }
-  let!(:jeff)   { Fabricate(:account) }
+  let!(:jeff)   { Fabricate(:user).account }
 
   let(:status1) { PostStatusService.new.call(alice, 'Hello @bob@example.com') }
   let(:status2) { PostStatusService.new.call(alice, 'Another status') }
@@ -17,6 +17,7 @@ RSpec.describe BatchedRemoveStatusService do
     stub_request(:post, 'http://example.com/salmon').to_return(status: 200, body: '', headers: {})
 
     Fabricate(:subscription, account: alice, callback_url: 'http://example.com/push', confirmed: true, expires_at: 30.days.from_now)
+    jeff.user.update(current_sign_in_at: Time.now)
     jeff.follow!(alice)
 
     status1

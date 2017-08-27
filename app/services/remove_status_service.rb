@@ -58,9 +58,7 @@ class RemoveStatusService < BaseService
   end
 
   def unpush(type, receiver, status)
-    redis.zrem(FeedManager.instance.key(type, receiver.id), status.id)
-
-    Redis.current.publish("timeline:#{receiver.id}", @payload)
+    FeedManager.instance.unpush(type, receiver, status)
   end
 
   def remove_from_hashtags

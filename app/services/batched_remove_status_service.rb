@@ -26,7 +26,7 @@ class BatchedRemoveStatusService < BaseService
     statuses.group_by(&:account_id).each do |_, account_statuses|
       account = account_statuses.first.account
 
-      unpush_from_home_timelines(account_statuses)
+      unpush_from_home_timelines(account, account_statuses)
       batch_stream_entries(account_statuses) if account.local?
     end
 
@@ -50,14 +50,15 @@ class BatchedRemoveStatusService < BaseService
     end
   end
 
-  def unpush_from_home_timelines(statuses)
-    account    = statuses.first.account
-    recipients = account.followers.local.pluck(:id)
+  def unpush_from_home_timelines(account, statuses)
+    recipients = account.followers.local.to_a
 
-    recipients << account.id if account.local?
+    recipients << account if account.local?
 
-    recipients.each do |follower_id|
-      unpush(follower_id, statuses)
+    recipients.each do |follower|
+      statuses.each do |status|
+        FeedManager.instance.unpush(:home, follower, status)
+      end
     end
   end
 
@@ -83,21 +84,6 @@ class BatchedRemoveStatusService < BaseService
 
     recipients.each do |recipient_id|
       @salmon_batches << [payload, status.account_id, recipient_id]
-    end
-  end
-
-  def unpush(follower_id, statuses)
-    key = FeedManager.instance.key(:home, follower_id)
-
-    originals = statuses.reject(&:reblog?)
-    reblogs   = statuses.select(&:reblog?)
-
-    # Quickly remove all originals
-    redis.pipelined do
-      originals.each do |status|
-        redis.zrem(key, status.id)
-        redis.publish("timeline:#{follower_id}", @json_payloads[status.id])
-      end
     end
   end
 
