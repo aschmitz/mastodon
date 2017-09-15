@@ -136,7 +136,7 @@ status.
 
   handleAccountClick = (e) => {
     const { status, parseClick } = this.props;
-    parseClick(e, `/accounts/${+status.getIn(['account', 'id'])}`);
+    parseClick(e, `/accounts/${status.getIn(['account', 'id'])}`);
   }
 
 /*
