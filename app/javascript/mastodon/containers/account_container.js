@@ -12,6 +12,7 @@ import {
   unmuteAccount,
 } from '../actions/accounts';
 import { openModal } from '../actions/modal';
+import { initMuteModal } from '../actions/mutes';
 
 const messages = defineMessages({
   unfollowConfirm: { id: 'confirmations.unfollow.confirm', defaultMessage: 'Unfollow' },
@@ -59,10 +60,14 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
     if (account.getIn(['relationship', 'muting'])) {
       dispatch(unmuteAccount(account.get('id')));
     } else {
-      dispatch(muteAccount(account.get('id')));
+      dispatch(initMuteModal(account));
     }
   },
 
+
+  onMuteNotifications (account, notifications) {
+    dispatch(muteAccount(account.get('id'), notifications));
+  },
 });
 
 export default injectIntl(connect(makeMapStateToProps, mapDispatchToProps)(Account));
