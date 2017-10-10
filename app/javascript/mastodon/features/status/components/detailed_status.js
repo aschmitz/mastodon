@@ -11,6 +11,7 @@ import Link from 'react-router-dom/Link';
 import { FormattedDate, FormattedNumber } from 'react-intl';
 import CardContainer from '../containers/card_container';
 import ImmutablePureComponent from 'react-immutable-pure-component';
+// import Video from '../../video';
 import VisibilityIcon from '../../../../glitch/components/status/visibility_icon';
 
 export default class DetailedStatus extends ImmutablePureComponent {
@@ -36,6 +37,10 @@ export default class DetailedStatus extends ImmutablePureComponent {
     e.stopPropagation();
   }
 
+  // handleOpenVideo = startTime => {
+  //   this.props.onOpenVideo(this.props.status.getIn(['media_attachments', 0]), startTime);
+  // }
+
   render () {
     const status = this.props.status.get('reblog') ? this.props.status.get('reblog') : this.props.status;
     const { settings } = this.props;
@@ -53,6 +58,7 @@ export default class DetailedStatus extends ImmutablePureComponent {
             sensitive={status.get('sensitive')}
             media={status.getIn(['media_attachments', 0])}
             letterbox={settings.getIn(['media', 'letterbox'])}
+            fullwidth={settings.getIn(['media', 'fullwidth'])}
             height={250}
             onOpenVideo={this.props.onOpenVideo}
             autoplay
@@ -65,6 +71,7 @@ export default class DetailedStatus extends ImmutablePureComponent {
             sensitive={status.get('sensitive')}
             media={status.get('media_attachments')}
             letterbox={settings.getIn(['media', 'letterbox'])}
+            fullwidth={settings.getIn(['media', 'fullwidth'])}
             height={250}
             onOpenMedia={this.props.onOpenMedia}
             autoPlayGif={this.props.autoPlayGif}

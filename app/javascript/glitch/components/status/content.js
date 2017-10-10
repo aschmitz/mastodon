@@ -1,13 +1,11 @@
 //  Package imports  //
 import React from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
-import escapeTextContentForBrowser from 'escape-html';
 import PropTypes from 'prop-types';
 import { FormattedMessage } from 'react-intl';
 import classnames from 'classnames';
 
 //  Mastodon imports  //
-import emojify from '../../../mastodon/emoji';
 import { isRtl } from '../../../mastodon/rtl';
 import Permalink from '../../../mastodon/components/permalink';
 
@@ -32,7 +30,7 @@ export default class StatusContent extends React.PureComponent {
     const node  = this.node;
     const links = node.querySelectorAll('a');
 
-    for (var i = 0; i < links.length; ++i) {
+    for (let i = 0; i < links.length; ++i) {
       let link    = links[i];
       let mention = this.props.status.get('mentions').find(item => link.href === item.get('url'));
 
@@ -131,12 +129,8 @@ export default class StatusContent extends React.PureComponent {
       this.state.hidden
     );
 
-    const content = { __html: emojify(status.get('content')) };
-    const spoilerContent = {
-      __html: emojify(escapeTextContentForBrowser(
-        status.get('spoiler_text', '')
-      )),
-    };
+    const content = { __html: status.get('contentHtml') };
+    const spoilerContent = { __html: status.get('spoilerHtml') };
     const directionStyle = { direction: 'ltr' };
     const classNames = classnames('status__content', {
       'status__content--with-action': parseClick && !disabled,
@@ -188,7 +182,7 @@ export default class StatusContent extends React.PureComponent {
       }
 
       return (
-        <div className={classNames} ref={this.setRef}>
+        <div className={classNames}>
           <p
             style={{ marginBottom: hidden && status.get('mentions').isEmpty() ? '0px' : null }}
             onMouseDown={this.handleMouseDown}
@@ -205,6 +199,7 @@ export default class StatusContent extends React.PureComponent {
 
           <div className={`status__content__spoiler ${!hidden ? 'status__content__spoiler--visible' : ''}`}>
             <div
+              ref={this.setRef}
               style={directionStyle}
               onMouseDown={this.handleMouseDown}
               onMouseUp={this.handleMouseUp}
@@ -218,11 +213,11 @@ export default class StatusContent extends React.PureComponent {
     } else if (parseClick) {
       return (
         <div
-          ref={this.setRef}
           className={classNames}
           style={directionStyle}
         >
           <div
+            ref={this.setRef}
             onMouseDown={this.handleMouseDown}
             onMouseUp={this.handleMouseUp}
             dangerouslySetInnerHTML={content}
@@ -233,11 +228,10 @@ export default class StatusContent extends React.PureComponent {
     } else {
       return (
         <div
-          ref={this.setRef}
           className='status__content'
           style={directionStyle}
         >
-          <div dangerouslySetInnerHTML={content} />
+          <div ref={this.setRef} dangerouslySetInnerHTML={content} />
           {media}
         </div>
       );

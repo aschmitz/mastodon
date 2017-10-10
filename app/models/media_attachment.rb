@@ -23,12 +23,32 @@ require 'mime/types'
 class MediaAttachment < ApplicationRecord
   self.inheritance_column = nil
 
-  enum type: [:image, :gifv, :video, :unknown]
+  enum type: [:image, :gifv, :video, :audio, :unknown]
+
+  IMAGE_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif'].freeze
+  VIDEO_FILE_EXTENSIONS = ['.webm', '.mp4', '.m4v'].freeze
+  AUDIO_FILE_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.ogg'].freeze
 
   IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif'].freeze
   VIDEO_MIME_TYPES = ['video/webm', 'video/mp4'].freeze
+  AUDIO_MIME_TYPES = ['audio/mpeg', 'audio/mp4', 'audio/vnd.wav', 'audio/wav', 'audio/x-wav', 'audio/x-wave', 'audio/ogg',].freeze
 
   IMAGE_STYLES = { original: '1280x1280>', small: '400x400>' }.freeze
+  AUDIO_STYLES = {
+    original: {
+      format: 'mp4',
+      convert_options: {
+        output: {
+          filter_complex: '"[0:a]compand,showwaves=s=640x360:mode=line,format=yuv420p[v]"',
+          map: '"[v]" -map 0:a', 
+          threads: 2,
+          vcodec: 'libx264',
+          acodec: 'aac',
+          movflags: '+faststart',
+        },
+      },
+    },
+  }.freeze
   VIDEO_STYLES = {
     small: {
       convert_options: {
@@ -51,18 +71,24 @@ class MediaAttachment < ApplicationRecord
 
   include Remotable
 
-  validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES
+  validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES + AUDIO_MIME_TYPES
   validates_attachment_size :file, less_than: 8.megabytes
 
   validates :account, presence: true
 
-  scope :attached, -> { where.not(status_id: nil) }
+  scope :attached,   -> { where.not(status_id: nil) }
   scope :unattached, -> { where(status_id: nil) }
-  scope :local, -> { where(remote_url: '') }
+  scope :local,      -> { where(remote_url: '') }
+  scope :remote,     -> { where.not(remote_url: '') }
+
   default_scope { order(id: :asc) }
 
   def local?
     remote_url.blank?
+  end
+
+  def needs_redownload?
+    file.blank? && remote_url.present?
   end
 
   def to_param
@@ -98,6 +124,8 @@ class MediaAttachment < ApplicationRecord
         }
       elsif IMAGE_MIME_TYPES.include? f.instance.file_content_type
         IMAGE_STYLES
+      elsif AUDIO_MIME_TYPES.include? f.instance.file_content_type
+        AUDIO_STYLES
       else
         VIDEO_STYLES
       end
@@ -108,6 +136,8 @@ class MediaAttachment < ApplicationRecord
         [:gif_transcoder]
       elsif VIDEO_MIME_TYPES.include? f.file_content_type
         [:video_transcoder]
+      elsif AUDIO_MIME_TYPES.include? f.file_content_type
+        [:audio_transcoder]
       else
         [:thumbnail]
       end
@@ -128,8 +158,8 @@ class MediaAttachment < ApplicationRecord
   end
 
   def set_type_and_extension
-    self.type = VIDEO_MIME_TYPES.include?(file_content_type) ? :video : :image
-    extension = appropriate_extension
+    self.type = VIDEO_MIME_TYPES.include?(file_content_type) ? :video : AUDIO_MIME_TYPES.include?(file_content_type) ? :audio : :image
+    extension = AUDIO_MIME_TYPES.include?(file_content_type) ? '.mp4' : appropriate_extension
     basename  = Paperclip::Interpolations.basename(file, :original)
     file.instance_write :file_name, [basename, extension].delete_if(&:blank?).join('.')
   end

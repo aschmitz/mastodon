@@ -13,7 +13,7 @@ import SpoilerButtonContainer from '../containers/spoiler_button_container';
 import PrivacyDropdownContainer from '../containers/privacy_dropdown_container';
 import ComposeAdvancedOptionsContainer from '../../../../glitch/components/compose/advanced_options/container';
 import SensitiveButtonContainer from '../containers/sensitive_button_container';
-import EmojiPickerDropdown from './emoji_picker_dropdown';
+import EmojiPickerDropdown from '../containers/emoji_picker_dropdown_container';
 import UploadFormContainer from '../containers/upload_form_container';
 import WarningContainer from '../containers/warning_container';
 import { isMobile } from '../../../is_mobile';
@@ -51,11 +51,14 @@ export default class ComposeForm extends ImmutablePureComponent {
     onSubmit: PropTypes.func.isRequired,
     onClearSuggestions: PropTypes.func.isRequired,
     onFetchSuggestions: PropTypes.func.isRequired,
+    onPrivacyChange: PropTypes.func.isRequired,
     onSuggestionSelected: PropTypes.func.isRequired,
     onChangeSpoilerText: PropTypes.func.isRequired,
     onPaste: PropTypes.func.isRequired,
     onPickEmoji: PropTypes.func.isRequired,
     showSearch: PropTypes.bool,
+    settings : ImmutablePropTypes.map.isRequired,
+    filesAttached : PropTypes.bool,
   };
 
   static defaultProps = {
@@ -70,6 +73,11 @@ export default class ComposeForm extends ImmutablePureComponent {
     if (e.keyCode === 13 && (e.ctrlKey || e.metaKey)) {
       this.handleSubmit();
     }
+  }
+
+  handleSubmit2 = () => {
+    this.props.onPrivacyChange(this.props.settings.get('side_arm'));
+    this.handleSubmit();
   }
 
   handleSubmit = () => {
@@ -142,24 +150,64 @@ export default class ComposeForm extends ImmutablePureComponent {
 
   handleEmojiPick = (data) => {
     const position     = this.autosuggestTextarea.textarea.selectionStart;
-    const emojiChar    = data.unicode.split('-').map(code => String.fromCodePoint(parseInt(code, 16))).join('');
+    const emojiChar    = data.native;
     this._restoreCaret = position + emojiChar.length + 1;
     this.props.onPickEmoji(position, data);
   }
 
   render () {
-    const { intl, onPaste, showSearch } = this.props;
+    const { intl, onPaste, showSearch, filesAttached } = this.props;
     const disabled = this.props.is_submitting;
     const maybeEye = (this.props.advanced_options && this.props.advanced_options.do_not_federate) ? ' 👁️' : '';
     const text     = [this.props.spoiler_text, countableText(this.props.text), maybeEye].join('');
 
-    let publishText = '';
+    const secondaryVisibility = this.props.settings.get('side_arm');
+    const isWideView = this.props.settings.get('stretch');
+    let showSideArm = secondaryVisibility !== 'none';
 
-    if (this.props.privacy === 'private' || this.props.privacy === 'direct') {
-      publishText = <span className='compose-form__publish-private'><i className='fa fa-lock' /> {intl.formatMessage(messages.publish)}</span>;
+    let publishText = '';
+    let publishText2 = '';
+
+    const privacyIcons = {
+      none: '',
+      public: 'globe',
+      unlisted: 'unlock-alt',
+      private: 'lock',
+      direct: 'envelope',
+    };
+
+    if (showSideArm) {
+      publishText = (
+        <span>
+          {
+            <i
+              className={`fa fa-${privacyIcons[this.props.privacy]}`}
+              style={{
+                paddingRight: (filesAttached || !isWideView) ? '0' : '5px',
+              }}
+            />
+          }{
+            (filesAttached || !isWideView) ? '' :
+              intl.formatMessage(messages.publish)
+          }
+        </span>
+      );
+
+      publishText2 = (
+        <i
+          className={`fa fa-${privacyIcons[secondaryVisibility]}`}
+          aria-label={`${intl.formatMessage(messages.publish)}: ${intl.formatMessage({ id: `privacy.${secondaryVisibility}.short` })}`}
+        />
+      );
     } else {
-      publishText = this.props.privacy !== 'unlisted' ? intl.formatMessage(messages.publishLoud, { publish: intl.formatMessage(messages.publish) }) : intl.formatMessage(messages.publish);
+      if (this.props.privacy === 'private' || this.props.privacy === 'direct') {
+        publishText = <span className='compose-form__publish-private'><i className='fa fa-lock' /> {intl.formatMessage(messages.publish)}</span>;
+      } else {
+        publishText = this.props.privacy !== 'unlisted' ? intl.formatMessage(messages.publishLoud, { publish: intl.formatMessage(messages.publish) }) : intl.formatMessage(messages.publish);
+      }
     }
+
+    const submitDisabled = disabled || this.props.is_uploading || length(text) > 500 || (text.length !== 0 && text.trim().length === 0);
 
     return (
       <div className='compose-form'>
@@ -210,7 +258,24 @@ export default class ComposeForm extends ImmutablePureComponent {
 
           <div className='compose-form__publish'>
             <div className='character-counter__wrapper'><CharacterCounter max={500} text={text} /></div>
-            <div className='compose-form__publish-button-wrapper'><Button text={publishText} onClick={this.handleSubmit} disabled={disabled || this.props.is_uploading || length(text) > 500 || (text.length !== 0 && text.trim().length === 0)} block /></div>
+            <div className='compose-form__publish-button-wrapper'>
+              {
+                showSideArm ?
+                  <Button
+                    className='compose-form__publish__side-arm'
+                    text={publishText2}
+                    onClick={this.handleSubmit2}
+                    disabled={submitDisabled}
+                  /> : ''
+              }
+              <Button
+                className='compose-form__publish__primary'
+                text={publishText}
+                onClick={this.handleSubmit}
+                disabled={submitDisabled}
+                block
+              />
+            </div>
           </div>
         </div>
       </div>

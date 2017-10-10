@@ -4,16 +4,7 @@
 - content_for :header_tags do
   %script#initial-state{ type: 'application/json' }!= json_escape(@initial_state_json)
   = javascript_pack_tag 'about', integrity: true, crossorigin: 'anonymous'
-
-  %meta{ property: 'og:site_name', content: site_title }/
-  %meta{ property: 'og:url', content: about_url }/
-  %meta{ property: 'og:type', content: 'website' }/
-  %meta{ property: 'og:title', content: site_hostname }/
-  %meta{ property: 'og:description', content: strip_tags(@instance_presenter.site_description.presence || t('about.about_mastodon_html')) }/
-  %meta{ property: 'og:image', content: asset_pack_path('mastodon_small.jpg', protocol: :request) }/
-  %meta{ property: 'og:image:width', content: '400' }/
-  %meta{ property: 'og:image:height', content: '400' }/
-  %meta{ property: 'twitter:card', content: 'summary' }/
+  = render partial: 'og'
 
 .landing-page
   .header-wrapper
@@ -56,6 +47,13 @@
                 %p= t('about.closed_registrations')
               - else
                 = @instance_presenter.closed_registrations_message.html_safe
+
+            = simple_form_for(:user, html: { style: 'margin-left: -20px' }, url: session_path(:user)) do |f|
+              = f.input :email, autofocus: true, placeholder: t('simple_form.labels.defaults.email'), required: true, input_html: { 'aria-label' => t('simple_form.labels.defaults.email') }
+              = f.input :password, placeholder: t('simple_form.labels.defaults.password'), required: true, input_html: { 'aria-label' => t('simple_form.labels.defaults.password'), :autocomplete => 'off' }
+
+              .actions
+                = f.button :button, t('auth.login'), type: :submit
             = link_to t('about.find_another_instance'), 'https://joinmastodon.org/', class: 'button button-alternative button--block'
 
   .about-short
