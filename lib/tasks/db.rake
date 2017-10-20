@@ -75,31 +75,33 @@ namespace :db do
   end
 
   task :ensure_ids_are_timestamp_based do
-    conn = ActiveRecord::Base.connection
+    each_schema_load_environment do
+      conn = ActiveRecord::Base.connection
 
-    # First, make sure we have a `timestamp_id` function.
-    Rake::Task['db:define_timestamp_id'].execute
+      # First, make sure we have a `timestamp_id` function.
+      Mastodon::Snowflake.define_timestamp_id
 
-    # Now, see if there are any tables using sequential IDs.
-    conn.tables.each do |table|
-      # We're only concerned with "id" columns.
-      next unless (id_col = conn.columns(table).find { |col| col.name == 'id' })
+      # Now, see if there are any tables using sequential IDs.
+      conn.tables.each do |table|
+        # We're only concerned with "id" columns.
+        next unless (id_col = conn.columns(table).find { |col| col.name == 'id' })
 
-      # And only those that are still using serials.
-      next unless id_col.serial?
+        # And only those that are still using serials.
+        next unless id_col.serial?
 
-      # Make sure they're using a bigint, not something else.
-      if id_col.sql_type != 'bigint'
-        logger.warning "Table #{table} has an non-bigint ID " \
-                       'column, leaving it alone.'
-        next
+        # Make sure they're using a bigint, not something else.
+        if id_col.sql_type != 'bigint'
+          logger.warning "Table #{table} has an non-bigint ID " \
+                         'column, leaving it alone.'
+          next
+        end
+
+        # Make them use our timestamp IDs instead.
+        alter_query = "ALTER TABLE #{conn.quote_table_name(table)}
+          ALTER COLUMN id
+          SET DEFAULT timestamp_id(#{conn.quote(table)})"
+        conn.execute(alter_query)
       end
-
-      # Make them use our timestamp IDs instead.
-      alter_query = "ALTER TABLE #{conn.quote_table_name(table)}
-        ALTER COLUMN id
-        SET DEFAULT timestamp_id(#{conn.quote(table)})"
-      conn.execute(alter_query)
     end
   end
 
