@@ -5,8 +5,8 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
 import ReplyIndicatorContainer from '../containers/reply_indicator_container';
 import AutosuggestTextarea from '../../../components/autosuggest_textarea';
-import { debounce } from 'lodash';
 import UploadButtonContainer from '../containers/upload_button_container';
+import DoodleButtonContainer from '../containers/doodle_button_container';
 import { defineMessages, injectIntl } from 'react-intl';
 import Collapsable from '../../../components/collapsable';
 import SpoilerButtonContainer from '../containers/spoiler_button_container';
@@ -58,7 +58,6 @@ export default class ComposeForm extends ImmutablePureComponent {
     onPickEmoji: PropTypes.func.isRequired,
     showSearch: PropTypes.bool,
     settings : ImmutablePropTypes.map.isRequired,
-    filesAttached : PropTypes.bool,
   };
 
   static defaultProps = {
@@ -94,9 +93,9 @@ export default class ComposeForm extends ImmutablePureComponent {
     this.props.onClearSuggestions();
   }
 
-  onSuggestionsFetchRequested = debounce((token) => {
+  onSuggestionsFetchRequested = (token) => {
     this.props.onFetchSuggestions(token);
-  }, 500, { trailing: true })
+  }
 
   onSuggestionSelected = (tokenStart, token, value) => {
     this._restoreCaret = null;
@@ -156,13 +155,12 @@ export default class ComposeForm extends ImmutablePureComponent {
   }
 
   render () {
-    const { intl, onPaste, showSearch, filesAttached } = this.props;
+    const { intl, onPaste, showSearch } = this.props;
     const disabled = this.props.is_submitting;
     const maybeEye = (this.props.advanced_options && this.props.advanced_options.do_not_federate) ? ' 👁️' : '';
     const text     = [this.props.spoiler_text, countableText(this.props.text), maybeEye].join('');
 
     const secondaryVisibility = this.props.settings.get('side_arm');
-    const isWideView = this.props.settings.get('stretch');
     let showSideArm = secondaryVisibility !== 'none';
 
     let publishText = '';
@@ -182,14 +180,9 @@ export default class ComposeForm extends ImmutablePureComponent {
           {
             <i
               className={`fa fa-${privacyIcons[this.props.privacy]}`}
-              style={{
-                paddingRight: (filesAttached || !isWideView) ? '0' : '5px',
-              }}
+              style={{ paddingRight: '5px' }}
             />
-          }{
-            (filesAttached || !isWideView) ? '' :
-              intl.formatMessage(messages.publish)
-          }
+          }{intl.formatMessage(messages.publish)}
         </span>
       );
 
@@ -247,35 +240,33 @@ export default class ComposeForm extends ImmutablePureComponent {
           <UploadFormContainer />
         </div>
 
-        <div className='compose-form__buttons-wrapper'>
-          <div className='compose-form__buttons'>
-            <UploadButtonContainer />
-            <PrivacyDropdownContainer />
-            <ComposeAdvancedOptionsContainer />
-            <SensitiveButtonContainer />
-            <SpoilerButtonContainer />
-          </div>
+        <div className='compose-form__buttons'>
+          <UploadButtonContainer />
+          <DoodleButtonContainer />
+          <PrivacyDropdownContainer />
+          <ComposeAdvancedOptionsContainer />
+          <SensitiveButtonContainer />
+          <SpoilerButtonContainer />
+        </div>
 
-          <div className='compose-form__publish'>
-            <div className='character-counter__wrapper'><CharacterCounter max={500} text={text} /></div>
-            <div className='compose-form__publish-button-wrapper'>
-              {
-                showSideArm ?
-                  <Button
-                    className='compose-form__publish__side-arm'
-                    text={publishText2}
-                    onClick={this.handleSubmit2}
-                    disabled={submitDisabled}
-                  /> : ''
-              }
-              <Button
-                className='compose-form__publish__primary'
-                text={publishText}
-                onClick={this.handleSubmit}
-                disabled={submitDisabled}
-                block
-              />
-            </div>
+        <div className='compose-form__publish'>
+          <div className='character-counter__wrapper'><CharacterCounter max={500} text={text} /></div>
+          <div className='compose-form__publish-button-wrapper'>
+            {
+              showSideArm ?
+                <Button
+                  className='compose-form__publish__side-arm'
+                  text={publishText2}
+                  onClick={this.handleSubmit2}
+                  disabled={submitDisabled}
+                /> : ''
+            }
+            <Button
+              className='compose-form__publish__primary'
+              text={publishText}
+              onClick={this.handleSubmit}
+              disabled={submitDisabled}
+            />
           </div>
         </div>
       </div>

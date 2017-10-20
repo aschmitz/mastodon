@@ -48,7 +48,7 @@ import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 
 //  Mastodon imports  //
-import emojify from '../../../mastodon/emoji';
+import emojify from '../../../mastodon/features/emoji/emoji';
 import IconButton from '../../../mastodon/components/icon_button';
 import Avatar from '../../../mastodon/components/avatar';
 
@@ -120,10 +120,6 @@ then we set the `displayName` to just be the `username` of the account.
     let info        = '';
     let actionBtn   = '';
     let following   = false;
-
-    if (displayName.length === 0) {
-      displayName = account.get('username');
-    }
 
 /*
 
