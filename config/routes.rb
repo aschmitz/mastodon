@@ -66,6 +66,13 @@ Rails.application.routes.draw do
 
   namespace :settings do
     resource :profile, only: [:show, :update]
+
+    resources :keyword_mutes do
+      collection do
+        delete :destroy_all
+      end
+    end
+
     resource :preferences, only: [:show, :update]
     resource :notifications, only: [:show, :update]
     resource :import, only: [:show, :create]
@@ -126,7 +133,10 @@ Rails.application.routes.draw do
       member do
         post :subscribe
         post :unsubscribe
+        post :enable
+        post :disable
         post :redownload
+        post :memorialize
       end
 
       resource :reset, only: [:create]
@@ -134,13 +144,20 @@ Rails.application.routes.draw do
       resource :suspension, only: [:create, :destroy]
       resource :confirmation, only: [:create]
       resources :statuses, only: [:index, :create, :update, :destroy]
+
+      resource :role do
+        member do
+          post :promote
+          post :demote
+        end
+      end
     end
 
     resources :users, only: [] do
       resource :two_factor_authentication, only: [:destroy]
     end
 
-    resources :custom_emojis, only: [:index, :new, :create, :destroy] do
+    resources :custom_emojis, only: [:index, :new, :create, :update, :destroy] do
       member do
         post :copy
         post :enable
@@ -193,6 +210,7 @@ Rails.application.routes.draw do
       end
 
       namespace :timelines do
+        resource :direct, only: :show, controller: :direct
         resource :home, only: :show, controller: :home
         resource :public, only: :show, controller: :public
         resources :tag, only: :show

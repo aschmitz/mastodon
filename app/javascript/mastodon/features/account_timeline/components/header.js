@@ -10,10 +10,10 @@ export default class Header extends ImmutablePureComponent {
 
   static propTypes = {
     account: ImmutablePropTypes.map,
-    me: PropTypes.string.isRequired,
     onFollow: PropTypes.func.isRequired,
     onBlock: PropTypes.func.isRequired,
     onMention: PropTypes.func.isRequired,
+    onReblogToggle: PropTypes.func.isRequired,
     onReport: PropTypes.func.isRequired,
     onMute: PropTypes.func.isRequired,
     onBlockDomain: PropTypes.func.isRequired,
@@ -40,6 +40,10 @@ export default class Header extends ImmutablePureComponent {
     this.props.onReport(this.props.account);
   }
 
+  handleReblogToggle = () => {
+    this.props.onReblogToggle(this.props.account);
+  }
+
   handleMute = () => {
     this.props.onMute(this.props.account);
   }
@@ -61,7 +65,7 @@ export default class Header extends ImmutablePureComponent {
   }
 
   render () {
-    const { account, me } = this.props;
+    const { account } = this.props;
 
     if (account === null) {
       return <MissingIndicator />;
@@ -71,15 +75,14 @@ export default class Header extends ImmutablePureComponent {
       <div className='account-timeline__header'>
         <InnerHeader
           account={account}
-          me={me}
           onFollow={this.handleFollow}
         />
 
         <ActionBar
           account={account}
-          me={me}
           onBlock={this.handleBlock}
           onMention={this.handleMention}
+          onReblogToggle={this.handleReblogToggle}
           onReport={this.handleReport}
           onMute={this.handleMute}
           onBlockDomain={this.handleBlockDomain}

@@ -39,6 +39,7 @@ import ImmutablePureComponent from 'react-immutable-pure-component';
 
 //  Mastodon imports  //
 import scheduleIdleTask from '../../../mastodon/features/ui/util/schedule_idle_task';
+import { autoPlayGif } from '../../../mastodon/initial_state';
 
 //  Our imports  //
 import StatusPrepend from './prepend';
@@ -89,9 +90,6 @@ few parts:
     These are our local settings, fetched from our store. We need this
     to determine how best to collapse our statuses, among other things.
 
- -  __`me` (`PropTypes.number`) :__
-    This is the id of the currently-signed-in user.
-
  -  __`onFavourite`, `onReblog`, `onModalReblog`, `onDelete`,
     `onMention`, `onMute`, `onMuteConversation`, onBlock`, `onReport`,
     `onOpenMedia`, `onOpenVideo` (`PropTypes.func`) :__
@@ -102,9 +100,6 @@ few parts:
     These tell whether or not the user has modals activated for
     reblogging and deleting statuses. They are used by the `onReblog`
     and `onDelete` functions, but we don't deal with them here.
-
- -  __`autoPlayGif` (`PropTypes.bool`) :__
-    This tells the frontend whether or not to autoplay gifs!
 
  -  __`muted` (`PropTypes.bool`) :__
     This has nothing to do with a user or conversation mute! "Muted" is
@@ -160,7 +155,6 @@ export default class Status extends ImmutablePureComponent {
     account                     : ImmutablePropTypes.map,
     settings                    : ImmutablePropTypes.map,
     notification                : ImmutablePropTypes.map,
-    me                          : PropTypes.string,
     onFavourite                 : PropTypes.func,
     onReblog                    : PropTypes.func,
     onModalReblog               : PropTypes.func,
@@ -177,7 +171,6 @@ export default class Status extends ImmutablePureComponent {
     onOpenVideo                 : PropTypes.func,
     reblogModal                 : PropTypes.bool,
     deleteModal                 : PropTypes.bool,
-    autoPlayGif                 : PropTypes.bool,
     muted                       : PropTypes.bool,
     collapse                    : PropTypes.bool,
     prepend                     : PropTypes.string,
@@ -211,9 +204,7 @@ to remember to specify it here.
     'account',
     'settings',
     'prepend',
-    'me',
     'boostModal',
-    'autoPlayGif',
     'muted',
     'collapse',
     'notification',
@@ -287,6 +278,7 @@ properly and our intersection observer is good to go.
       muted,
       id,
       intersectionObserverWrapper,
+      prepend,
     } = this.props;
     const autoCollapseSettings = settings.getIn(['collapsed', 'auto']);
 
@@ -299,6 +291,9 @@ properly and our intersection observer is good to go.
         node.clientHeight > (
           status.get('media_attachments').size && !muted ? 650 : 400
         )
+      ) || (
+        autoCollapseSettings.get('reblogs') &&
+        prepend === 'reblogged_by'
       ) || (
         autoCollapseSettings.get('replies') &&
         status.get('in_reply_to_id', null) !== null
@@ -556,7 +551,6 @@ this operation are further explained in the code below.
       intersectionObserverWrapper,
       onOpenVideo,
       onOpenMedia,
-      autoPlayGif,
       notification,
       ...other
     } = this.props;

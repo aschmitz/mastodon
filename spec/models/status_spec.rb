@@ -69,6 +69,36 @@ RSpec.describe Status, type: :model do
     end
   end
 
+  describe '#hidden?' do
+    context 'if private_visibility?' do
+      it 'returns true' do
+        subject.visibility = :private
+        expect(subject.hidden?).to be true
+      end
+    end
+
+    context 'if direct_visibility?' do
+      it 'returns true' do
+        subject.visibility = :direct
+        expect(subject.hidden?).to be true
+      end
+    end
+
+    context 'if public_visibility?' do
+      it 'returns false' do
+        subject.visibility = :public
+        expect(subject.hidden?).to be false
+      end
+    end
+
+    context 'if unlisted_visibility?' do
+      it 'returns false' do
+        subject.visibility = :unlisted
+        expect(subject.hidden?).to be false
+      end
+    end
+  end
+
   describe '#content' do
     it 'returns the text of the status if it is not a reblog' do
       expect(subject.content).to eql subject.text
@@ -230,6 +260,55 @@ RSpec.describe Status, type: :model do
     it 'does not include statuses from non-followed' do
       expect(@results).not_to include(@not_followed_status)
     end
+  end
+
+  describe '.as_direct_timeline' do
+    let(:account) { Fabricate(:account) }
+    let(:followed) { Fabricate(:account) }
+    let(:not_followed) { Fabricate(:account) }
+
+    before do
+      Fabricate(:follow, account: account, target_account: followed)
+
+      @self_public_status = Fabricate(:status, account: account, visibility: :public)
+      @self_direct_status = Fabricate(:status, account: account, visibility: :direct)
+      @followed_public_status = Fabricate(:status, account: followed, visibility: :public)
+      @followed_direct_status = Fabricate(:status, account: followed, visibility: :direct)
+      @not_followed_direct_status = Fabricate(:status, account: not_followed, visibility: :direct)
+
+      @results = Status.as_direct_timeline(account)
+    end
+
+    it 'does not include public statuses from self' do
+      expect(@results).to_not include(@self_public_status)
+    end
+
+    it 'includes direct statuses from self' do
+      expect(@results).to include(@self_direct_status)
+    end
+
+    it 'does not include public statuses from followed' do
+      expect(@results).to_not include(@followed_public_status)
+    end
+
+    it 'includes direct statuses mentioning recipient from followed' do
+      Fabricate(:mention, account: account, status: @followed_direct_status)
+      expect(@results).to include(@followed_direct_status)
+    end
+
+    it 'does not include direct statuses not mentioning recipient from followed' do
+      expect(@results).to_not include(@followed_direct_status)
+    end
+
+    it 'includes direct statuses mentioning recipient from non-followed' do
+      Fabricate(:mention, account: account, status: @not_followed_direct_status)
+      expect(@results).to include(@not_followed_direct_status)
+    end
+
+    it 'does not include direct statuses not mentioning recipient from non-followed' do
+      expect(@results).to_not include(@not_followed_direct_status)
+    end
+
   end
 
   describe '.as_public_timeline' do

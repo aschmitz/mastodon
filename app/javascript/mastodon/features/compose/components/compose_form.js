@@ -45,7 +45,6 @@ export default class ComposeForm extends ImmutablePureComponent {
     preselectDate: PropTypes.instanceOf(Date),
     is_submitting: PropTypes.bool,
     is_uploading: PropTypes.bool,
-    me: PropTypes.string,
     onChange: PropTypes.func.isRequired,
     onSubmit: PropTypes.func.isRequired,
     onClearSuggestions: PropTypes.func.isRequired,
@@ -164,6 +163,8 @@ export default class ComposeForm extends ImmutablePureComponent {
 
     let publishText = '';
     let publishText2 = '';
+    let title = '';
+    let title2 = '';
 
     const privacyIcons = {
       none: '',
@@ -173,7 +174,10 @@ export default class ComposeForm extends ImmutablePureComponent {
       direct: 'envelope',
     };
 
+    title = `${intl.formatMessage(messages.publish)}: ${intl.formatMessage({ id: `privacy.${this.props.privacy}.short` })}`;
+
     if (showSideArm) {
+      // Enhanced behavior with dual toot buttons
       publishText = (
         <span>
           {
@@ -185,13 +189,15 @@ export default class ComposeForm extends ImmutablePureComponent {
         </span>
       );
 
+      title2 = `${intl.formatMessage(messages.publish)}: ${intl.formatMessage({ id: `privacy.${secondaryVisibility}.short` })}`;
       publishText2 = (
         <i
           className={`fa fa-${privacyIcons[secondaryVisibility]}`}
-          aria-label={`${intl.formatMessage(messages.publish)}: ${intl.formatMessage({ id: `privacy.${secondaryVisibility}.short` })}`}
+          aria-label={title2}
         />
       );
     } else {
+      // Original vanilla behavior - no icon if public or unlisted
       if (this.props.privacy === 'private' || this.props.privacy === 'direct') {
         publishText = <span className='compose-form__publish-private'><i className='fa fa-lock' /> {intl.formatMessage(messages.publish)}</span>;
       } else {
@@ -256,6 +262,7 @@ export default class ComposeForm extends ImmutablePureComponent {
                 <Button
                   className='compose-form__publish__side-arm'
                   text={publishText2}
+                  title={title2}
                   onClick={this.handleSubmit2}
                   disabled={submitDisabled}
                 /> : ''
@@ -263,6 +270,7 @@ export default class ComposeForm extends ImmutablePureComponent {
             <Button
               className='compose-form__publish__primary'
               text={publishText}
+              title={title}
               onClick={this.handleSubmit}
               disabled={submitDisabled}
             />

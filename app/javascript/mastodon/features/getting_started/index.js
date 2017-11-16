@@ -8,6 +8,7 @@ import { openModal } from '../../actions/modal';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import ImmutablePureComponent from 'react-immutable-pure-component';
+import { me } from '../../initial_state';
 
 const messages = defineMessages({
   heading: { id: 'getting_started.heading', defaultMessage: 'Getting started' },
@@ -17,6 +18,7 @@ const messages = defineMessages({
   navigation_subheading: { id: 'column_subheading.navigation', defaultMessage: 'Navigation' },
   settings_subheading: { id: 'column_subheading.settings', defaultMessage: 'Settings' },
   community_timeline: { id: 'navigation_bar.community_timeline', defaultMessage: 'Local timeline' },
+  direct: { id: 'navigation_bar.direct', defaultMessage: 'Direct messages' },
   preferences: { id: 'navigation_bar.preferences', defaultMessage: 'Preferences' },
   settings: { id: 'navigation_bar.app_settings', defaultMessage: 'App settings' },
   follow_requests: { id: 'navigation_bar.follow_requests', defaultMessage: 'Follow requests' },
@@ -30,7 +32,7 @@ const messages = defineMessages({
 });
 
 const mapStateToProps = state => ({
-  me: state.getIn(['accounts', state.getIn(['meta', 'me'])]),
+  myAccount: state.getIn(['accounts', me]),
   columns: state.getIn(['settings', 'columns']),
 });
 
@@ -40,7 +42,7 @@ export default class GettingStarted extends ImmutablePureComponent {
 
   static propTypes = {
     intl: PropTypes.object.isRequired,
-    me: ImmutablePropTypes.map.isRequired,
+    myAccount: ImmutablePropTypes.map.isRequired,
     columns: ImmutablePropTypes.list,
     multiColumn: PropTypes.bool,
     dispatch: PropTypes.func.isRequired,
@@ -56,7 +58,7 @@ export default class GettingStarted extends ImmutablePureComponent {
   }
 
   render () {
-    const { intl, me, columns, multiColumn } = this.props;
+    const { intl, myAccount, columns, multiColumn } = this.props;
 
     let navItems = [];
 
@@ -78,18 +80,22 @@ export default class GettingStarted extends ImmutablePureComponent {
       }
     }
 
-    navItems = navItems.concat([
-      <ColumnLink key='4' icon='star' text={intl.formatMessage(messages.favourites)} to='/favourites' />,
-      <ColumnLink key='5' icon='thumb-tack' text={intl.formatMessage(messages.pins)} to='/pinned' />,
-    ]);
-
-    if (me.get('locked')) {
-      navItems.push(<ColumnLink key='6' icon='users' text={intl.formatMessage(messages.follow_requests)} to='/follow_requests' />);
+    if (!multiColumn || !columns.find(item => item.get('id') === 'DIRECT')) {
+      navItems.push(<ColumnLink key='4' icon='envelope' text={intl.formatMessage(messages.direct)} to='/timelines/direct' />);
     }
 
     navItems = navItems.concat([
-      <ColumnLink key='7' icon='volume-off' text={intl.formatMessage(messages.mutes)} to='/mutes' />,
-      <ColumnLink key='8' icon='ban' text={intl.formatMessage(messages.blocks)} to='/blocks' />,
+      <ColumnLink key='5' icon='star' text={intl.formatMessage(messages.favourites)} to='/favourites' />,
+      <ColumnLink key='6' icon='thumb-tack' text={intl.formatMessage(messages.pins)} to='/pinned' />,
+    ]);
+
+    if (myAccount.get('locked')) {
+      navItems.push(<ColumnLink key='7' icon='users' text={intl.formatMessage(messages.follow_requests)} to='/follow_requests' />);
+    }
+
+    navItems = navItems.concat([
+      <ColumnLink key='8' icon='volume-off' text={intl.formatMessage(messages.mutes)} to='/mutes' />,
+      <ColumnLink key='9' icon='ban' text={intl.formatMessage(messages.blocks)} to='/blocks' />,
     ]);
 
     return (

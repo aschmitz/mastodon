@@ -3,25 +3,25 @@
 #
 # Table name: statuses
 #
-#  id                     :integer          not null, primary key
+#  id                     :bigint           not null, primary key
 #  uri                    :string
-#  account_id             :integer          not null
+#  account_id             :bigint           not null
 #  text                   :text             default(""), not null
 #  created_at             :datetime         not null
 #  updated_at             :datetime         not null
-#  in_reply_to_id         :integer
-#  reblog_of_id           :integer
+#  in_reply_to_id         :bigint
+#  reblog_of_id           :bigint
 #  url                    :string
 #  sensitive              :boolean          default(FALSE), not null
 #  visibility             :integer          default("public"), not null
-#  in_reply_to_account_id :integer
-#  application_id         :integer
+#  in_reply_to_account_id :bigint
+#  application_id         :bigint
 #  spoiler_text           :text             default(""), not null
 #  reply                  :boolean          default(FALSE), not null
 #  favourites_count       :integer          default(0), not null
 #  reblogs_count          :integer          default(0), not null
 #  language               :string
-#  conversation_id        :integer
+#  conversation_id        :bigint
 #  local                  :boolean
 #
 
@@ -152,6 +152,14 @@ class Status < ApplicationRecord
 
     def as_home_timeline(account)
       where(account: [account] + account.following).where(visibility: [:public, :unlisted, :private])
+    end
+
+    def as_direct_timeline(account)
+      query = joins("LEFT OUTER JOIN mentions ON statuses.id = mentions.status_id AND mentions.account_id = #{account.id}")
+              .where("mentions.account_id = #{account.id} OR statuses.account_id = #{account.id}")
+              .where(visibility: [:direct])
+
+      apply_timeline_filters(query, account, false)
     end
 
     def as_public_timeline(account = nil, local_only = false)
