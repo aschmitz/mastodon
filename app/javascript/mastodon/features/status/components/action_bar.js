@@ -107,8 +107,8 @@ export default class ActionBar extends React.PureComponent {
     );
 
     let reblogIcon = 'retweet';
-    //if (status.get('visibility') === 'direct') reblogIcon = 'envelope';
-    // else if (status.get('visibility') === 'private') reblogIcon = 'lock';
+    if (status.get('visibility') === 'direct') reblogIcon = 'envelope';
+    else if (status.get('visibility') === 'private') reblogIcon = 'lock';
 
     let reblog_disabled = (status.get('visibility') === 'direct' || status.get('visibility') === 'private');
 
@@ -120,7 +120,7 @@ export default class ActionBar extends React.PureComponent {
         {shareButton}
 
         <div className='detailed-status__action-bar-dropdown'>
-          <DropdownMenuContainer size={18} icon='ellipsis-h' items={menu} direction='left' ariaLabel='More' />
+          <DropdownMenuContainer size={18} icon='ellipsis-h' items={menu} direction='left' title='More' />
         </div>
       </div>
     );

@@ -1,6 +1,3 @@
-//  THIS FILE EXISTS FOR UPSTREAM COMPATIBILITY & SHOULDN'T BE USED !!
-//  SEE INSTEAD : glitch/components/status/action_bar
-
 import React from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
@@ -182,7 +179,7 @@ export default class StatusActionBar extends ImmutablePureComponent {
         {shareButton}
 
         <div className='status__action-bar-dropdown'>
-          <DropdownMenuContainer disabled={anonymousAccess} status={status} items={menu} icon='ellipsis-h' size={18} direction='right' ariaLabel={intl.formatMessage(messages.more)} />
+          <DropdownMenuContainer disabled={anonymousAccess} status={status} items={menu} icon='ellipsis-h' size={18} direction='right' title={intl.formatMessage(messages.more)} />
         </div>
       </div>
     );

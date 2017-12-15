@@ -10,7 +10,6 @@ import accounts_counters from './accounts_counters';
 import statuses from './statuses';
 import relationships from './relationships';
 import settings from './settings';
-import local_settings from '../../glitch/reducers/local_settings';
 import push_notifications from './push_notifications';
 import status_lists from './status_lists';
 import cards from './cards';
@@ -23,6 +22,8 @@ import media_attachments from './media_attachments';
 import notifications from './notifications';
 import height_cache from './height_cache';
 import custom_emojis from './custom_emojis';
+import lists from './lists';
+import listEditor from './list_editor';
 
 const reducers = {
   timelines,
@@ -37,7 +38,6 @@ const reducers = {
   statuses,
   relationships,
   settings,
-  local_settings,
   push_notifications,
   cards,
   mutes,
@@ -49,6 +49,8 @@ const reducers = {
   notifications,
   height_cache,
   custom_emojis,
+  lists,
+  listEditor,
 };
 
 export default combineReducers(reducers);

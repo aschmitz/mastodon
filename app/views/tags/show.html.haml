@@ -3,7 +3,6 @@
 
 - content_for :header_tags do
   %script#initial-state{ type: 'application/json' }!= json_escape(@initial_state_json)
-  = javascript_pack_tag 'about', integrity: true, crossorigin: 'anonymous'
   = render 'og'
 
 .landing-page.tag-page
@@ -20,8 +19,11 @@
           %p= t 'about.about_hashtag_html', hashtag: @tag.name
 
           .cta
-            = link_to t('auth.login'), new_user_session_path, class: 'button button-secondary'
-            = link_to t('about.learn_more'), root_url, class: 'button button-alternative'
+            - if user_signed_in?
+              = link_to t('settings.back'), root_path, class: 'button button-secondary'
+            - else
+              = link_to t('auth.login'), new_user_session_path, class: 'button button-secondary'
+            = link_to t('about.learn_more'), about_path, class: 'button button-alternative'
 
         .features-list
           .features-list__row

@@ -1,10 +1,11 @@
 import React from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
-import InnerHeader from '../../../../glitch/components/account/header';
+import InnerHeader from '../../account/components/header';
 import ActionBar from '../../account/components/action_bar';
 import MissingIndicator from '../../../components/missing_indicator';
 import ImmutablePureComponent from 'react-immutable-pure-component';
+import MovedNote from './moved_note';
 
 export default class Header extends ImmutablePureComponent {
 
@@ -73,6 +74,8 @@ export default class Header extends ImmutablePureComponent {
 
     return (
       <div className='account-timeline__header'>
+        {account.get('moved') && <MovedNote from={account} to={account.get('moved')} />}
+
         <InnerHeader
           account={account}
           onFollow={this.handleFollow}
