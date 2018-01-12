@@ -38,7 +38,6 @@ export const COMPOSE_SPOILERNESS_CHANGE = 'COMPOSE_SPOILERNESS_CHANGE';
 export const COMPOSE_SPOILER_TEXT_CHANGE = 'COMPOSE_SPOILER_TEXT_CHANGE';
 export const COMPOSE_VISIBILITY_CHANGE  = 'COMPOSE_VISIBILITY_CHANGE';
 export const COMPOSE_LISTABILITY_CHANGE = 'COMPOSE_LISTABILITY_CHANGE';
-export const COMPOSE_COMPOSING_CHANGE = 'COMPOSE_COMPOSING_CHANGE';
 
 export const COMPOSE_EMOJI_INSERT = 'COMPOSE_EMOJI_INSERT';
 
@@ -62,7 +61,7 @@ export function replyCompose(status, router) {
       status: status,
     });
 
-    if (!getState().getIn(['compose', 'mounted'])) {
+    if (router && !getState().getIn(['compose', 'mounted'])) {
       router.push('/statuses/new');
     }
   };
@@ -118,6 +117,11 @@ export function submitCompose() {
       },
     }).then(function (response) {
       dispatch(submitComposeSuccess({ ...response.data }));
+
+      //  If the response has no data then we can't do anything else.
+      if (!response.data) {
+        return;
+      }
 
       // To make the app more responsive, immediately get the status into the columns
 
@@ -316,21 +320,14 @@ export function readyComposeSuggestionsAccounts(token, accounts) {
 
 export function selectComposeSuggestion(position, token, suggestion) {
   return (dispatch, getState) => {
-    let completion, startPosition;
-
-    if (typeof suggestion === 'object' && suggestion.id) {
-      completion    = suggestion.native || suggestion.colons;
-      startPosition = position - 1;
-
-      dispatch(useEmoji(suggestion));
-    } else {
-      completion    = getState().getIn(['accounts', suggestion, 'acct']);
-      startPosition = position;
-    }
+    const completion = typeof suggestion === 'object' && suggestion.id ? (
+      dispatch(useEmoji(suggestion)),
+      suggestion.native || suggestion.colons
+    ) : '@' + getState().getIn(['accounts', suggestion, 'acct']);
 
     dispatch({
       type: COMPOSE_SUGGESTION_SELECT,
-      position: startPosition,
+      position,
       token,
       completion,
     });
@@ -349,10 +346,11 @@ export function unmountCompose() {
   };
 };
 
-export function toggleComposeAdvancedOption(option) {
+export function changeComposeAdvancedOption(option, value) {
   return {
+    option,
     type: COMPOSE_ADVANCED_OPTIONS_CHANGE,
-    option: option,
+    value,
   };
 }
 
@@ -389,10 +387,3 @@ export function insertEmojiCompose(position, emoji) {
     emoji,
   };
 };
-
-export function changeComposing(value) {
-  return {
-    type: COMPOSE_COMPOSING_CHANGE,
-    value,
-  };
-}

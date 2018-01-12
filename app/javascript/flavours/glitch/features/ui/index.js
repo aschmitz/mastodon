@@ -17,9 +17,10 @@ import UploadArea from './components/upload_area';
 import ColumnsAreaContainer from './containers/columns_area_container';
 import classNames from 'classnames';
 import {
-  Compose,
+  Drawer,
   Status,
   GettingStarted,
+  KeyboardShortcuts,
   PublicTimeline,
   CommunityTimeline,
   AccountTimeline,
@@ -40,6 +41,7 @@ import {
   Mutes,
   PinnedStatuses,
   Lists,
+  GettingStartedMisc,
 } from 'flavours/glitch/util/async-components';
 import { HotKeys } from 'react-hotkeys';
 import { me } from 'flavours/glitch/util/initial_state';
@@ -54,7 +56,6 @@ const messages = defineMessages({
 });
 
 const mapStateToProps = state => ({
-  isComposing: state.getIn(['compose', 'is_composing']),
   hasComposingText: state.getIn(['compose', 'text']) !== '',
   layout: state.getIn(['local_settings', 'layout']),
   isWide: state.getIn(['local_settings', 'stretch']),
@@ -62,6 +63,7 @@ const mapStateToProps = state => ({
 });
 
 const keyMap = {
+  help: '?',
   new: 'n',
   search: 's',
   forceNew: 'option+n',
@@ -117,9 +119,9 @@ export default class UI extends React.Component {
   };
 
   handleBeforeUnload = (e) => {
-    const { intl, isComposing, hasComposingText } = this.props;
+    const { intl, hasComposingText } = this.props;
 
-    if (isComposing && hasComposingText) {
+    if (hasComposingText) {
       // Setting returnValue to any string causes confirmation dialog.
       // Many browsers no longer display this text to users,
       // but we set user-friendly message for other browsers, e.g. Edge.
@@ -224,9 +226,8 @@ export default class UI extends React.Component {
   }
 
   shouldComponentUpdate (nextProps) {
-    if (nextProps.isComposing !== this.props.isComposing) {
+    if (nextProps.navbarUnder !== this.props.navbarUnder) {
       // Avoid expensive update just to toggle a class
-      this.node.classList.toggle('is-composing', nextProps.isComposing);
       this.node.classList.toggle('navbar-under', nextProps.navbarUnder);
 
       return false;
@@ -311,6 +312,14 @@ export default class UI extends React.Component {
     this.hotkeys = c;
   }
 
+  handleHotkeyToggleHelp = () => {
+    if (this.props.location.pathname === '/keyboard-shortcuts') {
+      this.context.router.history.goBack();
+    } else {
+      this.context.router.history.push('/keyboard-shortcuts');
+    }
+  }
+
   handleHotkeyGoToHome = () => {
     this.context.router.history.push('/timelines/home');
   }
@@ -377,6 +386,7 @@ export default class UI extends React.Component {
     });
 
     const handlers = {
+      help: this.handleHotkeyToggleHelp,
       new: this.handleHotkeyNew,
       search: this.handleHotkeySearch,
       forceNew: this.handleHotkeyForceNew,
@@ -404,6 +414,7 @@ export default class UI extends React.Component {
             <WrappedSwitch>
               <Redirect from='/' to='/getting-started' exact />
               <WrappedRoute path='/getting-started' component={GettingStarted} content={children} />
+              <WrappedRoute path='/keyboard-shortcuts' component={KeyboardShortcuts} content={children} />
               <WrappedRoute path='/timelines/home' component={HomeTimeline} content={children} />
               <WrappedRoute path='/timelines/public' exact component={PublicTimeline} content={children} />
               <WrappedRoute path='/timelines/public/local' component={CommunityTimeline} content={children} />
@@ -414,7 +425,7 @@ export default class UI extends React.Component {
               <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
               <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
 
-              <WrappedRoute path='/statuses/new' component={Compose} content={children} />
+              <WrappedRoute path='/statuses/new' component={Drawer} content={children} />
               <WrappedRoute path='/statuses/:statusId' exact component={Status} content={children} />
               <WrappedRoute path='/statuses/:statusId/reblogs' component={Reblogs} content={children} />
               <WrappedRoute path='/statuses/:statusId/favourites' component={Favourites} content={children} />
@@ -428,6 +439,7 @@ export default class UI extends React.Component {
               <WrappedRoute path='/blocks' component={Blocks} content={children} />
               <WrappedRoute path='/mutes' component={Mutes} content={children} />
               <WrappedRoute path='/lists' component={Lists} content={children} />
+              <WrappedRoute path='/getting-started-misc' component={GettingStartedMisc} content={children} />
 
               <WrappedRoute component={GenericNotFound} content={children} />
             </WrappedSwitch>

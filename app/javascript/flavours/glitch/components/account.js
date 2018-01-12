@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Fragment } from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
 import Avatar from './avatar';
@@ -27,8 +27,10 @@ export default class Account extends ImmutablePureComponent {
     onFollow: PropTypes.func.isRequired,
     onBlock: PropTypes.func.isRequired,
     onMute: PropTypes.func.isRequired,
+    onMuteNotifications: PropTypes.func.isRequired,
     intl: PropTypes.object.isRequired,
     hidden: PropTypes.bool,
+    small: PropTypes.bool,
   };
 
   handleFollow = () => {
@@ -52,7 +54,12 @@ export default class Account extends ImmutablePureComponent {
   }
 
   render () {
-    const { account, intl, hidden } = this.props;
+    const {
+      account,
+      hidden,
+      intl,
+      small,
+    } = this.props;
 
     if (!account) {
       return <div />;
@@ -69,7 +76,7 @@ export default class Account extends ImmutablePureComponent {
 
     let buttons;
 
-    if (account.get('id') !== me && account.get('relationship', null) !== null) {
+    if (account.get('id') !== me && !small && account.get('relationship', null) !== null) {
       const following = account.getIn(['relationship', 'following']);
       const requested = account.getIn(['relationship', 'requested']);
       const blocking  = account.getIn(['relationship', 'blocking']);
@@ -87,27 +94,45 @@ export default class Account extends ImmutablePureComponent {
           hidingNotificationsButton = <IconButton active icon='bell-slash' title={intl.formatMessage(messages.mute_notifications, { name: account.get('username')  })} onClick={this.handleMuteNotifications} />;
         }
         buttons = (
-          <div>
+          <Fragment>
             <IconButton active icon='volume-up' title={intl.formatMessage(messages.unmute, { name: account.get('username') })} onClick={this.handleMute} />
             {hidingNotificationsButton}
-          </div>
+          </Fragment>
         );
-      } else {
+      } else if (!account.get('moved')) {
         buttons = <IconButton icon={following ? 'user-times' : 'user-plus'} title={intl.formatMessage(following ? messages.unfollow : messages.follow)} onClick={this.handleFollow} active={following} />;
       }
     }
 
-    return (
+    return small ? (
+      <Permalink
+        className='account small'
+        href={account.get('url')}
+        to={`/accounts/${account.get('id')}`}
+      >
+        <div className='account__avatar-wrapper'>
+          <Avatar
+            account={account}
+            size={24}
+          />
+        </div>
+        <DisplayName
+          account={account}
+          inline
+        />
+      </Permalink>
+    ) : (
       <div className='account'>
         <div className='account__wrapper'>
           <Permalink key={account.get('id')} className='account__display-name' href={account.get('url')} to={`/accounts/${account.get('id')}`}>
             <div className='account__avatar-wrapper'><Avatar account={account} size={36} /></div>
             <DisplayName account={account} />
           </Permalink>
-
-          <div className='account__relationship'>
-            {buttons}
-          </div>
+          {buttons ?
+            <div className='account__relationship'>
+              {buttons}
+            </div>
+          : null}
         </div>
       </div>
     );

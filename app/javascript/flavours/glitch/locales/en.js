@@ -34,6 +34,8 @@ const messages = {
   'status.collapse': 'Collapse',
   'status.uncollapse': 'Uncollapse',
 
+  'media_gallery.sensitive': 'Sensitive',
+
   'favourite_modal.combo': 'You can press {combo} to skip this next time',
 
   'home.column_settings.show_direct': 'Show DMs',
@@ -47,6 +49,18 @@ const messages = {
   'notification_purge.btn_none': 'Select\nnone',
   'notification_purge.btn_invert': 'Invert\nselection',
   'notification_purge.btn_apply': 'Clear\nselected',
+
+  'compose.attach.upload': 'Upload a file',
+  'compose.attach.doodle': 'Draw something',
+  'compose.attach': 'Attach...',
+
+  'advanced_options.local-only.short': 'Local-only',
+  'advanced_options.local-only.long': 'Do not post to other instances',
+  'advanced_options.local-only.tooltip': 'This post is local-only',
+  'advanced_options.icon_title': 'Advanced options',
+  'advanced_options.threaded_mode.short': 'Threaded mode',
+  'advanced_options.threaded_mode.long': 'Automatically opens a reply on posting',
+  'advanced_options.threaded_mode.tooltip': 'Threaded mode enabled',
 };
 
 export default Object.assign({}, inherited, messages);

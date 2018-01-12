@@ -13,11 +13,11 @@ module Mastodon
     end
 
     def patch
-      0
+      3
     end
 
     def pre
-      'rc5'
+      nil
     end
 
     def flags

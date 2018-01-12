@@ -2,8 +2,8 @@ export function EmojiPicker () {
   return import(/* webpackChunkName: "flavours/glitch/async/emoji_picker" */'flavours/glitch/util/emoji/emoji_picker');
 }
 
-export function Compose () {
-  return import(/* webpackChunkName: "flavours/glitch/async/compose" */'flavours/glitch/features/compose');
+export function Drawer () {
+  return import(/* webpackChunkName: "flavours/glitch/async/drawer" */'flavours/glitch/features/drawer');
 }
 
 export function Notifications () {
@@ -27,15 +27,15 @@ export function HashtagTimeline () {
 }
 
 export function ListTimeline () {
-  return import(/* webpackChunkName: "features/list_timeline" */'flavours/glitch/features/list_timeline');
+  return import(/* webpackChunkName: "flavours/glitch/async/list_timeline" */'flavours/glitch/features/list_timeline');
 }
 
 export function Lists () {
-  return import(/* webpackChunkName: "features/lists" */'flavours/glitch/features/lists');
+  return import(/* webpackChunkName: "flavours/glitch/async/lists" */'flavours/glitch/features/lists');
 }
 
 export function ListEditor () {
-  return import(/* webpackChunkName: "features/list_editor" */'flavours/glitch/features/list_editor');
+  return import(/* webpackChunkName: "flavours/glitch/async/list_editor" */'flavours/glitch/features/list_editor');
 }
 
 export function DirectTimeline() {
@@ -48,6 +48,10 @@ export function Status () {
 
 export function GettingStarted () {
   return import(/* webpackChunkName: "flavours/glitch/async/getting_started" */'flavours/glitch/features/getting_started');
+}
+
+export function KeyboardShortcuts () {
+  return import(/* webpackChunkName: "flavours/glitch/async/keyboard_shortcuts" */'flavours/glitch/features/keyboard_shortcuts');
 }
 
 export function PinnedStatuses () {
@@ -124,4 +128,8 @@ export function Video () {
 
 export function EmbedModal () {
   return import(/* webpackChunkName: "flavours/glitch/async/embed_modal" */'flavours/glitch/features/ui/components/embed_modal');
+}
+
+export function GettingStartedMisc () {
+  return import(/* webpackChunkName: "flavours/glitch/async/getting_started_misc" */'flavours/glitch/features/getting_started_misc');
 }

@@ -23,6 +23,7 @@
 #  account_id             :integer          not null
 #  application_id         :integer
 #  in_reply_to_account_id :integer
+#  local_only             :boolean
 #
 
 class Status < ApplicationRecord
@@ -73,6 +74,8 @@ class Status < ApplicationRecord
   scope :including_silenced_accounts, -> { left_outer_joins(:account).where(accounts: { silenced: true }) }
   scope :not_excluded_by_account, ->(account) { where.not(account_id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { account.excluded_from_timeline_domains.blank? ? left_outer_joins(:account) : left_outer_joins(:account).where('accounts.domain IS NULL OR accounts.domain NOT IN (?)', account.excluded_from_timeline_domains) }
+
+  scope :not_local_only, -> { where(local_only: [false, nil]) }
 
   cache_associated :account, :application, :media_attachments, :tags, :stream_entry, mentions: :account, reblog: [:account, :application, :stream_entry, :tags, :media_attachments, mentions: :account], thread: :account
 
@@ -135,8 +138,11 @@ class Status < ApplicationRecord
   end
 
   after_create_commit :store_uri, if: :local?
+  after_create_commit :update_statistics, if: :local?
 
   around_create Mastodon::Snowflake::Callbacks
+
+  before_create :set_locality
 
   before_validation :prepare_contents, if: :local?
   before_validation :set_reblog
@@ -218,7 +224,7 @@ class Status < ApplicationRecord
       visibility = [:public, :unlisted]
 
       if account.nil?
-        where(visibility: visibility)
+        where(visibility: visibility).not_local_only
       elsif target_account.blocking?(account) # get rid of blocked peeps
         none
       elsif account.id == target_account.id # author can see own stuff
@@ -257,7 +263,7 @@ class Status < ApplicationRecord
     end
 
     def filter_timeline_default(query)
-      query.excluding_silenced_accounts
+      query.not_local_only.excluding_silenced_accounts
     end
 
     def account_silencing_filter(account)
@@ -269,9 +275,13 @@ class Status < ApplicationRecord
     end
   end
 
-  def local_only?
+  def marked_local_only?
     # match both with and without U+FE0F (the emoji variation selector)
-    /👁\ufe0f?\z/.match?(content)
+    /#{local_only_emoji}\ufe0f?\z/.match?(content)
+  end
+
+  def local_only_emoji
+    '👁'
   end
 
   private
@@ -299,6 +309,12 @@ class Status < ApplicationRecord
     self.sensitive = sensitive || spoiler_text.present?
   end
 
+  def set_locality
+    if account.domain.nil? && !attribute_changed?(:local_only)
+      self.local_only = marked_local_only?
+    end
+  end
+
   def set_conversation
     self.reply = !(in_reply_to_id.nil? && thread.nil?) unless reply
 
@@ -320,5 +336,10 @@ class Status < ApplicationRecord
 
   def set_local
     self.local = account.local?
+  end
+
+  def update_statistics
+    return unless public_visibility? || unlisted_visibility?
+    ActivityTracker.increment('activity:statuses:local')
   end
 end
