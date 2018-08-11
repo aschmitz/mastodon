@@ -47,7 +47,6 @@ export default class Status extends ImmutablePureComponent {
 
   state = {
     isExpanded: null,
-    markedForDelete: false,
   }
 
   // Avoid checking props that are functions (and whose equality will always
@@ -67,7 +66,6 @@ export default class Status extends ImmutablePureComponent {
 
   updateOnStates = [
     'isExpanded',
-    'markedForDelete',
   ]
 
   //  If our settings have changed to disable collapsed statuses, then we
@@ -121,15 +119,15 @@ export default class Status extends ImmutablePureComponent {
 
     if (function () {
       switch (true) {
-      case collapse:
-      case autoCollapseSettings.get('all'):
-      case autoCollapseSettings.get('notifications') && muted:
+      case !!collapse:
+      case !!autoCollapseSettings.get('all'):
+      case autoCollapseSettings.get('notifications') && !!muted:
       case autoCollapseSettings.get('lengthy') && node.clientHeight > (
         status.get('media_attachments').size && !muted ? 650 : 400
       ):
       case autoCollapseSettings.get('reblogs') && prepend === 'reblogged_by':
       case autoCollapseSettings.get('replies') && status.get('in_reply_to_id', null) !== null:
-      case autoCollapseSettings.get('media') && !(status.get('spoiler_text').length) && status.get('media_attachments').size:
+      case autoCollapseSettings.get('media') && !(status.get('spoiler_text').length) && !!status.get('media_attachments').size:
         return true;
       default:
         return false;
@@ -318,14 +316,14 @@ export default class Status extends ImmutablePureComponent {
 
         media = (
           <Bundle fetchComponent={Video} loading={this.renderLoadingVideoPlayer} >
-            {Component => <Component
+            {Component => (<Component
               preview={video.get('preview_url')}
               src={video.get('url')}
               sensitive={status.get('sensitive')}
               letterbox={settings.getIn(['media', 'letterbox'])}
               fullwidth={settings.getIn(['media', 'fullwidth'])}
               onOpenVideo={this.handleOpenVideo}
-            />}
+            />)}
           </Bundle>
         );
         mediaIcon = 'video-camera';
@@ -382,7 +380,6 @@ export default class Status extends ImmutablePureComponent {
     const computedClass = classNames('status', `status-${status.get('visibility')}`, {
       collapsed: isExpanded === false,
       'has-background': isExpanded === false && background,
-      'marked-for-delete': this.state.markedForDelete,
       muted,
     }, 'focusable');
 

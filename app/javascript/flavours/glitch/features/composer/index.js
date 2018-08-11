@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import React from 'react';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 
+const APPROX_HASHTAG_RE = /(?:^|[^\/\)\w])#(\S+)/i;
+
 //  Actions.
 import {
   cancelReplyCompose,
@@ -36,6 +38,7 @@ import ComposerSpoiler from './spoiler';
 import ComposerTextarea from './textarea';
 import ComposerUploadForm from './upload_form';
 import ComposerWarning from './warning';
+import ComposerHashtagWarning from './hashtag_warning';
 
 //  Utils.
 import { countableText } from 'flavours/glitch/util/counter';
@@ -312,6 +315,7 @@ class Composer extends React.Component {
           text={spoilerText}
         />
         {privacy === 'private' && amUnlocked ? <ComposerWarning /> : null}
+        {privacy !== 'public' && APPROX_HASHTAG_RE.test(text) ? <ComposerHashtagWarning /> : null}
         {replyContent ? (
           <ComposerReply
             account={replyAccount}
@@ -350,10 +354,10 @@ class Composer extends React.Component {
           acceptContentTypes={acceptContentTypes}
           advancedOptions={advancedOptions}
           disabled={isSubmitting}
-          full={media.size >= 4 || media.some(
+          full={media ? media.size >= 4 || media.some(
             item => item.get('type') === 'video'
-          )}
-          hasMedia={!!media.size}
+          ) : false}
+          hasMedia={media && !!media.size}
           intl={intl}
           onChangeAdvancedOption={onChangeAdvancedOption}
           onChangeSensitivity={onChangeSensitivity}
@@ -369,7 +373,7 @@ class Composer extends React.Component {
           spoiler={spoiler}
         />
         <ComposerPublisher
-          countText={`${spoilerText}${countableText(text)}${advancedOptions.get('do_not_federate') ? ' 👁️' : ''}`}
+          countText={`${spoilerText}${countableText(text)}${advancedOptions && advancedOptions.get('do_not_federate') ? ' 👁️' : ''}`}
           disabled={isSubmitting || isUploading || !!text.length && !text.trim().length}
           intl={intl}
           onSecondarySubmit={handleSecondarySubmit}
