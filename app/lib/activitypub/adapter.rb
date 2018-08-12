@@ -9,7 +9,7 @@ class ActivityPub::Adapter < ActiveModelSerializers::Adapter::Base
       {
         'manuallyApprovesFollowers' => 'as:manuallyApprovesFollowers',
         'sensitive'                 => 'as:sensitive',
-        'movedTo'                   => 'as:movedTo',
+        'movedTo'                   => { '@id' => 'as:movedTo', '@type' => '@id' },
         'Hashtag'                   => 'as:Hashtag',
         'ostatus'                   => 'http://ostatus.org#',
         'atomUri'                   => 'ostatus:atomUri',
@@ -17,6 +17,11 @@ class ActivityPub::Adapter < ActiveModelSerializers::Adapter::Base
         'conversation'              => 'ostatus:conversation',
         'toot'                      => 'http://joinmastodon.org/ns#',
         'Emoji'                     => 'toot:Emoji',
+        'focalPoint'                => { '@container' => '@list', '@id' => 'toot:focalPoint' },
+        'featured'                  => { '@id' => 'toot:featured', '@type' => '@id' },
+        'schema'                    => 'http://schema.org#',
+        'PropertyValue'             => 'schema:PropertyValue',
+        'value'                     => 'schema:value',
       },
     ],
   }.freeze

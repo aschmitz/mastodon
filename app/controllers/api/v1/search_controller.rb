@@ -5,7 +5,7 @@ class Api::V1::SearchController < Api::BaseController
 
   RESULTS_LIMIT = 10
 
-  before_action -> { doorkeeper_authorize! :read }
+  before_action -> { doorkeeper_authorize! :read, :'read:search' }
   before_action :require_user!
 
   respond_to :json
@@ -33,12 +33,8 @@ class Api::V1::SearchController < Api::BaseController
     SearchService.new.call(
       params[:q],
       RESULTS_LIMIT,
-      resolving_search?,
+      truthy_param?(:resolve),
       current_account
     )
-  end
-
-  def resolving_search?
-    params[:resolve] == 'true'
   end
 end

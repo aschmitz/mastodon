@@ -8,7 +8,7 @@ import ColumnHeader from '../../components/column_header';
 import { addColumn, removeColumn, moveColumn } from '../../actions/columns';
 import { FormattedMessage, defineMessages, injectIntl } from 'react-intl';
 import { connectListStream } from '../../actions/streaming';
-import { refreshListTimeline, expandListTimeline } from '../../actions/timelines';
+import { expandListTimeline } from '../../actions/timelines';
 import { fetchList, deleteList } from '../../actions/lists';
 import { openModal } from '../../actions/modal';
 import MissingIndicator from '../../components/missing_indicator';
@@ -35,6 +35,7 @@ export default class ListTimeline extends React.PureComponent {
   static propTypes = {
     params: PropTypes.object.isRequired,
     dispatch: PropTypes.func.isRequired,
+    shouldUpdateScroll: PropTypes.func,
     columnId: PropTypes.string,
     hasUnread: PropTypes.bool,
     multiColumn: PropTypes.bool,
@@ -67,7 +68,7 @@ export default class ListTimeline extends React.PureComponent {
     const { id } = this.props.params;
 
     dispatch(fetchList(id));
-    dispatch(refreshListTimeline(id));
+    dispatch(expandListTimeline(id));
 
     this.disconnect = dispatch(connectListStream(id));
   }
@@ -83,9 +84,9 @@ export default class ListTimeline extends React.PureComponent {
     this.column = c;
   }
 
-  handleLoadMore = () => {
+  handleLoadMore = maxId => {
     const { id } = this.props.params;
-    this.props.dispatch(expandListTimeline(id));
+    this.props.dispatch(expandListTimeline(id, { maxId }));
   }
 
   handleEditClick = () => {
@@ -112,7 +113,7 @@ export default class ListTimeline extends React.PureComponent {
   }
 
   render () {
-    const { hasUnread, columnId, multiColumn, list } = this.props;
+    const { shouldUpdateScroll, hasUnread, columnId, multiColumn, list } = this.props;
     const { id } = this.props.params;
     const pinned = !!columnId;
     const title  = list ? list.get('title') : id;
@@ -138,7 +139,7 @@ export default class ListTimeline extends React.PureComponent {
     return (
       <Column ref={this.setRef}>
         <ColumnHeader
-          icon='bars'
+          icon='list-ul'
           active={hasUnread}
           title={title}
           onPin={this.handlePin}
@@ -164,8 +165,9 @@ export default class ListTimeline extends React.PureComponent {
           trackScroll={!pinned}
           scrollKey={`list_timeline-${columnId}`}
           timelineId={`list:${id}`}
-          loadMore={this.handleLoadMore}
+          onLoadMore={this.handleLoadMore}
           emptyMessage={<FormattedMessage id='empty_column.list' defaultMessage='There is nothing in this list yet. When members of this list post new statuses, they will appear here.' />}
+          shouldUpdateScroll={shouldUpdateScroll}
         />
       </Column>
     );

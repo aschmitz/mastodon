@@ -27,6 +27,7 @@ export default class Favourites extends ImmutablePureComponent {
 
   static propTypes = {
     dispatch: PropTypes.func.isRequired,
+    shouldUpdateScroll: PropTypes.func,
     statusIds: ImmutablePropTypes.list.isRequired,
     intl: PropTypes.object.isRequired,
     columnId: PropTypes.string,
@@ -62,12 +63,12 @@ export default class Favourites extends ImmutablePureComponent {
     this.column = c;
   }
 
-  handleScrollToBottom = debounce(() => {
+  handleLoadMore = debounce(() => {
     this.props.dispatch(expandFavouritedStatuses());
   }, 300, { leading: true })
 
   render () {
-    const { intl, statusIds, columnId, multiColumn, hasMore, isLoading } = this.props;
+    const { intl, shouldUpdateScroll, statusIds, columnId, multiColumn, hasMore, isLoading } = this.props;
     const pinned = !!columnId;
 
     return (
@@ -89,7 +90,8 @@ export default class Favourites extends ImmutablePureComponent {
           scrollKey={`favourited_statuses-${columnId}`}
           hasMore={hasMore}
           isLoading={isLoading}
-          onScrollToBottom={this.handleScrollToBottom}
+          onLoadMore={this.handleLoadMore}
+          shouldUpdateScroll={shouldUpdateScroll}
         />
       </Column>
     );

@@ -9,16 +9,19 @@ class ApplicationController < ActionController::Base
 
   include Localized
   include UserTrackingConcern
+  include SessionTrackingConcern
 
   helper_method :current_account
   helper_method :current_session
   helper_method :current_flavour
   helper_method :current_skin
   helper_method :single_user_mode?
+  helper_method :use_seamless_external_login?
 
   rescue_from ActionController::RoutingError, with: :not_found
   rescue_from ActiveRecord::RecordNotFound, with: :not_found
   rescue_from ActionController::InvalidAuthenticityToken, with: :unprocessable_entity
+  rescue_from ActionController::UnknownFormat, with: :not_acceptable
   rescue_from Mastodon::NotPermittedError, with: :forbidden
 
   before_action :store_current_location, except: :raise_not_found, unless: :devise_controller?
@@ -35,15 +38,15 @@ class ApplicationController < ActionController::Base
   end
 
   def store_current_location
-    store_location_for(:user, request.url)
+    store_location_for(:user, request.url) unless request.format == :json
   end
 
   def require_admin!
-    redirect_to root_path unless current_user&.admin?
+    forbidden unless current_user&.admin?
   end
 
   def require_staff!
-    redirect_to root_path unless current_user&.staff?
+    forbidden unless current_user&.staff?
   end
 
   def check_suspension
@@ -141,8 +144,16 @@ class ApplicationController < ActionController::Base
     respond_with_error(422)
   end
 
+  def not_acceptable
+    respond_with_error(406)
+  end
+
   def single_user_mode?
     @single_user_mode ||= Rails.configuration.x.single_user_mode && Account.exists?
+  end
+
+  def use_seamless_external_login?
+    Devise.pam_authentication || Devise.ldap_authentication
   end
 
   def current_account

@@ -1,3 +1,4 @@
+import Immutable from 'immutable';
 import React from 'react';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
@@ -19,36 +20,84 @@ import {
 import {
   replyCompose,
   mentionCompose,
+  directCompose,
 } from '../../actions/compose';
 import { blockAccount } from '../../actions/accounts';
-import { muteStatus, unmuteStatus, deleteStatus } from '../../actions/statuses';
+import {
+  muteStatus,
+  unmuteStatus,
+  deleteStatus,
+  hideStatus,
+  revealStatus,
+} from '../../actions/statuses';
 import { initMuteModal } from '../../actions/mutes';
 import { initReport } from '../../actions/reports';
 import { makeGetStatus } from '../../selectors';
 import { ScrollContainer } from 'react-router-scroll-4';
 import ColumnBackButton from '../../components/column_back_button';
+import ColumnHeader from '../../components/column_header';
 import StatusContainer from '../../containers/status_container';
 import { openModal } from '../../actions/modal';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 import { HotKeys } from 'react-hotkeys';
 import { boostModal, deleteModal } from '../../initial_state';
-import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from '../../features/ui/util/fullscreen';
+import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from '../ui/util/fullscreen';
 
 const messages = defineMessages({
   deleteConfirm: { id: 'confirmations.delete.confirm', defaultMessage: 'Delete' },
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
+  redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
+  redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? You will lose all replies, boosts and favourites to it.' },
   blockConfirm: { id: 'confirmations.block.confirm', defaultMessage: 'Block' },
+  revealAll: { id: 'status.show_more_all', defaultMessage: 'Show more for all' },
+  hideAll: { id: 'status.show_less_all', defaultMessage: 'Show less for all' },
 });
 
 const makeMapStateToProps = () => {
   const getStatus = makeGetStatus();
 
-  const mapStateToProps = (state, props) => ({
-    status: getStatus(state, props.params.statusId),
-    ancestorsIds: state.getIn(['contexts', 'ancestors', props.params.statusId]),
-    descendantsIds: state.getIn(['contexts', 'descendants', props.params.statusId]),
-  });
+  const mapStateToProps = (state, props) => {
+    const status = getStatus(state, { id: props.params.statusId });
+    let ancestorsIds = Immutable.List();
+    let descendantsIds = Immutable.List();
+
+    if (status) {
+      ancestorsIds = ancestorsIds.withMutations(mutable => {
+        let id = status.get('in_reply_to_id');
+
+        while (id) {
+          mutable.unshift(id);
+          id = state.getIn(['contexts', 'inReplyTos', id]);
+        }
+      });
+
+      descendantsIds = descendantsIds.withMutations(mutable => {
+        const ids = [status.get('id')];
+
+        while (ids.length > 0) {
+          let id        = ids.shift();
+          const replies = state.getIn(['contexts', 'replies', id]);
+
+          if (status.get('id') !== id) {
+            mutable.push(id);
+          }
+
+          if (replies) {
+            replies.reverse().forEach(reply => {
+              ids.unshift(reply);
+            });
+          }
+        }
+      });
+    }
+
+    return {
+      status,
+      ancestorsIds,
+      descendantsIds,
+    };
+  };
 
   return mapStateToProps;
 };
@@ -125,18 +174,22 @@ export default class Status extends ImmutablePureComponent {
     }
   }
 
-  handleDeleteClick = (status) => {
+  handleDeleteClick = (status, withRedraft = false) => {
     const { dispatch, intl } = this.props;
 
     if (!deleteModal) {
-      dispatch(deleteStatus(status.get('id')));
+      dispatch(deleteStatus(status.get('id'), withRedraft));
     } else {
       dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(messages.deleteMessage),
-        confirm: intl.formatMessage(messages.deleteConfirm),
-        onConfirm: () => dispatch(deleteStatus(status.get('id'))),
+        message: intl.formatMessage(withRedraft ? messages.redraftMessage : messages.deleteMessage),
+        confirm: intl.formatMessage(withRedraft ? messages.redraftConfirm : messages.deleteConfirm),
+        onConfirm: () => dispatch(deleteStatus(status.get('id'), withRedraft)),
       }));
     }
+  }
+
+  handleDirectClick = (account, router) => {
+    this.props.dispatch(directCompose(account, router));
   }
 
   handleMentionClick = (account, router) => {
@@ -160,6 +213,25 @@ export default class Status extends ImmutablePureComponent {
       this.props.dispatch(unmuteStatus(status.get('id')));
     } else {
       this.props.dispatch(muteStatus(status.get('id')));
+    }
+  }
+
+  handleToggleHidden = (status) => {
+    if (status.get('hidden')) {
+      this.props.dispatch(revealStatus(status.get('id')));
+    } else {
+      this.props.dispatch(hideStatus(status.get('id')));
+    }
+  }
+
+  handleToggleAll = () => {
+    const { status, ancestorsIds, descendantsIds } = this.props;
+    const statusIds = [status.get('id')].concat(ancestorsIds.toJS(), descendantsIds.toJS());
+
+    if (status.get('hidden')) {
+      this.props.dispatch(revealStatus(statusIds));
+    } else {
+      this.props.dispatch(hideStatus(statusIds));
     }
   }
 
@@ -204,11 +276,15 @@ export default class Status extends ImmutablePureComponent {
 
   handleHotkeyMention = e => {
     e.preventDefault();
-    this.handleMentionClick(this.props.status);
+    this.handleMentionClick(this.props.status.get('account'));
   }
 
   handleHotkeyOpenProfile = () => {
     this.context.router.history.push(`/accounts/${this.props.status.getIn(['account', 'id'])}`);
+  }
+
+  handleHotkeyToggleHidden = () => {
+    this.handleToggleHidden(this.props.status);
   }
 
   handleMoveUp = id => {
@@ -260,6 +336,7 @@ export default class Status extends ImmutablePureComponent {
         id={id}
         onMoveUp={this.handleMoveUp}
         onMoveDown={this.handleMoveDown}
+        contextType='thread'
       />
     ));
   }
@@ -293,7 +370,7 @@ export default class Status extends ImmutablePureComponent {
 
   render () {
     let ancestors, descendants;
-    const { status, ancestorsIds, descendantsIds } = this.props;
+    const { shouldUpdateScroll, status, ancestorsIds, descendantsIds, intl } = this.props;
     const { fullscreen } = this.state;
 
     if (status === null) {
@@ -321,13 +398,19 @@ export default class Status extends ImmutablePureComponent {
       boost: this.handleHotkeyBoost,
       mention: this.handleHotkeyMention,
       openProfile: this.handleHotkeyOpenProfile,
+      toggleHidden: this.handleHotkeyToggleHidden,
     };
 
     return (
       <Column>
-        <ColumnBackButton />
+        <ColumnHeader
+          showBackButton
+          extraButton={(
+            <button className='column-header__button' title={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} aria-label={intl.formatMessage(status.get('hidden') ? messages.revealAll : messages.hideAll)} onClick={this.handleToggleAll} aria-pressed={status.get('hidden') ? 'false' : 'true'}><i className={`fa fa-${status.get('hidden') ? 'eye-slash' : 'eye'}`} /></button>
+          )}
+        />
 
-        <ScrollContainer scrollKey='thread'>
+        <ScrollContainer scrollKey='thread' shouldUpdateScroll={shouldUpdateScroll}>
           <div className={classNames('scrollable', 'detailed-status__wrapper', { fullscreen })} ref={this.setRef}>
             {ancestors}
 
@@ -337,6 +420,7 @@ export default class Status extends ImmutablePureComponent {
                   status={status}
                   onOpenVideo={this.handleOpenVideo}
                   onOpenMedia={this.handleOpenMedia}
+                  onToggleHidden={this.handleToggleHidden}
                 />
 
                 <ActionBar
@@ -345,6 +429,7 @@ export default class Status extends ImmutablePureComponent {
                   onFavourite={this.handleFavouriteClick}
                   onReblog={this.handleReblogClick}
                   onDelete={this.handleDeleteClick}
+                  onDirect={this.handleDirectClick}
                   onMention={this.handleMentionClick}
                   onMute={this.handleMuteClick}
                   onMuteConversation={this.handleConversationMuteClick}

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::SearchController < Api::BaseController
-  before_action -> { doorkeeper_authorize! :read }
+  before_action -> { doorkeeper_authorize! :read, :'read:accounts' }
   before_action :require_user!
 
   respond_to :json
@@ -21,9 +21,5 @@ class Api::V1::Accounts::SearchController < Api::BaseController
       resolve: truthy_param?(:resolve),
       following: truthy_param?(:following)
     )
-  end
-
-  def truthy_param?(key)
-    params[key] == 'true'
   end
 end

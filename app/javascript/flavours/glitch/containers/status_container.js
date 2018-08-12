@@ -5,12 +5,15 @@ import { makeGetStatus } from 'flavours/glitch/selectors';
 import {
   replyCompose,
   mentionCompose,
+  directCompose,
 } from 'flavours/glitch/actions/compose';
 import {
   reblog,
   favourite,
+  bookmark,
   unreblog,
   unfavourite,
+  unbookmark,
   pin,
   unpin,
 } from 'flavours/glitch/actions/interactions';
@@ -25,6 +28,8 @@ import { boostModal, favouriteModal, deleteModal } from 'flavours/glitch/util/in
 const messages = defineMessages({
   deleteConfirm: { id: 'confirmations.delete.confirm', defaultMessage: 'Delete' },
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
+  redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
+  redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? You will lose all replies, boosts and favourites to it.' },
   blockConfirm: { id: 'confirmations.block.confirm', defaultMessage: 'Block' },
 });
 
@@ -33,12 +38,15 @@ const makeMapStateToProps = () => {
 
   const mapStateToProps = (state, props) => {
 
-    let status = getStatus(state, props.id);
+    let status = getStatus(state, props);
     let reblogStatus = status ? status.get('reblog', null) : null;
     let account = undefined;
     let prepend = undefined;
 
-    if (reblogStatus !== null && typeof reblogStatus === 'object') {
+    if (props.featured) {
+      account = status.get('account');
+      prepend = 'featured';
+    } else if (reblogStatus !== null && typeof reblogStatus === 'object') {
       account = status.get('account');
       status = reblogStatus;
       prepend = 'reblogged_by';
@@ -78,6 +86,14 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
     }
   },
 
+  onBookmark (status) {
+    if (status.get('bookmarked')) {
+      dispatch(unbookmark(status));
+    } else {
+      dispatch(bookmark(status));
+    }
+  },
+
   onModalFavourite (status) {
     dispatch(favourite(status));
   },
@@ -106,16 +122,20 @@ const mapDispatchToProps = (dispatch, { intl }) => ({
     dispatch(openModal('EMBED', { url: status.get('url') }));
   },
 
-  onDelete (status) {
+  onDelete (status, withRedraft = false) {
     if (!deleteModal) {
-      dispatch(deleteStatus(status.get('id')));
+      dispatch(deleteStatus(status.get('id'), withRedraft));
     } else {
       dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(messages.deleteMessage),
-        confirm: intl.formatMessage(messages.deleteConfirm),
-        onConfirm: () => dispatch(deleteStatus(status.get('id'))),
+        message: intl.formatMessage(withRedraft ? messages.redraftMessage : messages.deleteMessage),
+        confirm: intl.formatMessage(withRedraft ? messages.redraftConfirm : messages.deleteConfirm),
+        onConfirm: () => dispatch(deleteStatus(status.get('id'), withRedraft)),
       }));
     }
+  },
+
+  onDirect (account, router) {
+    dispatch(directCompose(account, router));
   },
 
   onMention (account, router) {

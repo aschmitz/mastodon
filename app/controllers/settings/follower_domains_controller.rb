@@ -5,13 +5,13 @@ require 'sidekiq-bulk'
 class Settings::FollowerDomainsController < Settings::BaseController
   def show
     @account = current_account
-    @domains = current_account.followers.reorder('MIN(follows.id) DESC').group('accounts.domain').select('accounts.domain, count(accounts.id) as accounts_from_domain').page(params[:page]).per(10)
+    @domains = current_account.followers.reorder(Arel.sql('MIN(follows.id) DESC')).group('accounts.domain').select('accounts.domain, count(accounts.id) as accounts_from_domain').page(params[:page]).per(10)
   end
 
   def update
     domains = bulk_params[:select] || []
 
-    SoftBlockDomainFollowersWorker.push_bulk(domains) do |domain|
+    AfterAccountDomainBlockWorker.push_bulk(domains) do |domain|
       [current_account.id, domain]
     end
 

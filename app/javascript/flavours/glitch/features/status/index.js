@@ -11,6 +11,8 @@ import Column from 'flavours/glitch/features/ui/components/column';
 import {
   favourite,
   unfavourite,
+  bookmark,
+  unbookmark,
   reblog,
   unreblog,
   pin,
@@ -19,6 +21,7 @@ import {
 import {
   replyCompose,
   mentionCompose,
+  directCompose,
 } from 'flavours/glitch/actions/compose';
 import { blockAccount } from 'flavours/glitch/actions/accounts';
 import { muteStatus, unmuteStatus, deleteStatus } from 'flavours/glitch/actions/statuses';
@@ -27,6 +30,7 @@ import { initReport } from 'flavours/glitch/actions/reports';
 import { makeGetStatus } from 'flavours/glitch/selectors';
 import { ScrollContainer } from 'react-router-scroll-4';
 import ColumnBackButton from 'flavours/glitch/components/column_back_button';
+import ColumnHeader from '../../components/column_header';
 import StatusContainer from 'flavours/glitch/containers/status_container';
 import { openModal } from 'flavours/glitch/actions/modal';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
@@ -38,14 +42,18 @@ import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from
 const messages = defineMessages({
   deleteConfirm: { id: 'confirmations.delete.confirm', defaultMessage: 'Delete' },
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
+  redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
+  redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? You will lose all replies, boosts and favourites to it.' },
   blockConfirm: { id: 'confirmations.block.confirm', defaultMessage: 'Block' },
+  revealAll: { id: 'status.show_more_all', defaultMessage: 'Show more for all' },
+  hideAll: { id: 'status.show_less_all', defaultMessage: 'Show less for all' },
 });
 
 const makeMapStateToProps = () => {
   const getStatus = makeGetStatus();
 
   const mapStateToProps = (state, props) => ({
-    status: getStatus(state, props.params.statusId),
+    status: getStatus(state, { id: props.params.statusId }),
     settings: state.get('local_settings'),
     ancestorsIds: state.getIn(['contexts', 'ancestors', props.params.statusId]),
     descendantsIds: state.getIn(['contexts', 'descendants', props.params.statusId]),
@@ -74,7 +82,8 @@ export default class Status extends ImmutablePureComponent {
 
   state = {
     fullscreen: false,
-    isExpanded: null,
+    isExpanded: false,
+    threadExpanded: null,
   };
 
   componentWillMount () {
@@ -94,7 +103,7 @@ export default class Status extends ImmutablePureComponent {
 
   handleExpandedToggle = () => {
     if (this.props.status.get('spoiler_text')) {
-      this.setExpansion(this.state.isExpanded ? null : true);
+      this.setExpansion(!this.state.isExpanded);
     }
   };
 
@@ -142,18 +151,30 @@ export default class Status extends ImmutablePureComponent {
     }
   }
 
-  handleDeleteClick = (status) => {
+  handleBookmarkClick = (status) => {
+    if (status.get('bookmarked')) {
+      this.props.dispatch(unbookmark(status));
+    } else {
+      this.props.dispatch(bookmark(status));
+    }
+  }
+
+  handleDeleteClick = (status, withRedraft = false) => {
     const { dispatch, intl } = this.props;
 
     if (!deleteModal) {
-      dispatch(deleteStatus(status.get('id')));
+      dispatch(deleteStatus(status.get('id'), withRedraft));
     } else {
       dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(messages.deleteMessage),
-        confirm: intl.formatMessage(messages.deleteConfirm),
-        onConfirm: () => dispatch(deleteStatus(status.get('id'))),
+        message: intl.formatMessage(withRedraft ? messages.redraftMessage : messages.deleteMessage),
+        confirm: intl.formatMessage(withRedraft ? messages.redraftConfirm : messages.deleteConfirm),
+        onConfirm: () => dispatch(deleteStatus(status.get('id'), withRedraft)),
       }));
     }
+  }
+
+  handleDirectClick = (account, router) => {
+    this.props.dispatch(directCompose(account, router));
   }
 
   handleMentionClick = (account, router) => {
@@ -178,6 +199,11 @@ export default class Status extends ImmutablePureComponent {
     } else {
       this.props.dispatch(muteStatus(status.get('id')));
     }
+  }
+
+  handleToggleAll = () => {
+    const { isExpanded } = this.state;
+    this.setState({ isExpanded: !isExpanded, threadExpanded: !isExpanded });
   }
 
   handleBlockClick = (account) => {
@@ -275,14 +301,16 @@ export default class Status extends ImmutablePureComponent {
       <StatusContainer
         key={id}
         id={id}
+        expanded={this.state.threadExpanded}
         onMoveUp={this.handleMoveUp}
         onMoveDown={this.handleMoveDown}
+        contextType='thread'
       />
     ));
   }
 
   setExpansion = value => {
-    this.setState({ isExpanded: value ? true : null });
+    this.setState({ isExpanded: value });
   }
 
   setRef = c => {
@@ -314,10 +342,14 @@ export default class Status extends ImmutablePureComponent {
     this.setState({ fullscreen: isFullscreen() });
   }
 
+  shouldUpdateScroll = (prevRouterProps, { location }) => {
+    return !(location.state && location.state.mastodonModalOpen)
+  }
+
   render () {
     let ancestors, descendants;
     const { setExpansion } = this;
-    const { status, settings, ancestorsIds, descendantsIds } = this.props;
+    const { status, settings, ancestorsIds, descendantsIds, intl } = this.props;
     const { fullscreen, isExpanded } = this.state;
 
     if (status === null) {
@@ -350,9 +382,14 @@ export default class Status extends ImmutablePureComponent {
 
     return (
       <Column>
-        <ColumnBackButton />
+        <ColumnHeader
+          showBackButton
+          extraButton={(
+            <button className='column-header__button' title={intl.formatMessage(!isExpanded ? messages.revealAll : messages.hideAll)} aria-label={intl.formatMessage(!isExpanded ? messages.revealAll : messages.hideAll)} onClick={this.handleToggleAll} aria-pressed={!isExpanded ? 'false' : 'true'}><i className={`fa fa-${!isExpanded ? 'eye-slash' : 'eye'}`} /></button>
+          )}
+        />
 
-        <ScrollContainer scrollKey='thread'>
+        <ScrollContainer scrollKey='thread' shouldUpdateScroll={this.shouldUpdateScroll}>
           <div className={classNames('scrollable', 'detailed-status__wrapper', { fullscreen })} ref={this.setRef}>
             {ancestors}
 
@@ -364,7 +401,7 @@ export default class Status extends ImmutablePureComponent {
                   onOpenVideo={this.handleOpenVideo}
                   onOpenMedia={this.handleOpenMedia}
                   expanded={isExpanded}
-                  setExpansion={setExpansion}
+                  onToggleHidden={this.handleExpandedToggle}
                 />
 
                 <ActionBar
@@ -372,7 +409,9 @@ export default class Status extends ImmutablePureComponent {
                   onReply={this.handleReplyClick}
                   onFavourite={this.handleFavouriteClick}
                   onReblog={this.handleReblogClick}
+                  onBookmark={this.handleBookmarkClick}
                   onDelete={this.handleDeleteClick}
+                  onDirect={this.handleDirectClick}
                   onMention={this.handleMentionClick}
                   onMute={this.handleMuteClick}
                   onMuteConversation={this.handleConversationMuteClick}

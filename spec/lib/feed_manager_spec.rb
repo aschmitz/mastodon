@@ -1,7 +1,14 @@
 require 'rails_helper'
 
 RSpec.describe FeedManager do
-  it 'tracks at least as many statuses as reblogs' do
+  before do |example|
+    unless example.metadata[:skip_stub]
+      stub_const 'FeedManager::MAX_ITEMS', 10
+      stub_const 'FeedManager::REBLOG_FALLOFF', 4
+    end
+  end
+
+  it 'tracks at least as many statuses as reblogs', skip_stub: true do
     expect(FeedManager::REBLOG_FALLOFF).to be <= FeedManager::MAX_ITEMS
   end
 
@@ -127,58 +134,28 @@ RSpec.describe FeedManager do
         expect(FeedManager.instance.filter?(:home, reblog, alice.id)).to be true
       end
 
-      it 'returns true for a status containing a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'take')
-        status = Fabricate(:status, text: 'This is a hot take', account: bob)
+      context 'for irreversibly muted phrases' do
+        it 'considers word boundaries when matching' do
+          alice.custom_filters.create!(phrase: 'bob', context: %w(home), irreversible: true)
+          alice.follow!(jeff)
+          status = Fabricate(:status, text: 'bobcats', account: jeff)
+          expect(FeedManager.instance.filter?(:home, status, alice.id)).to be_falsy
+        end
 
-        expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
-      end
+        it 'returns true if phrase is contained' do
+          alice.custom_filters.create!(phrase: 'farts', context: %w(home public), irreversible: true)
+          alice.custom_filters.create!(phrase: 'pop tarts', context: %w(home), irreversible: true)
+          alice.follow!(jeff)
+          status = Fabricate(:status, text: 'i sure like POP TARts', account: jeff)
+          expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
+        end
 
-      it 'returns true for a reply containing a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'take')
-        s1 = Fabricate(:status, text: 'Something', account: alice)
-        s2 = Fabricate(:status, text: 'This is a hot take', thread: s1, account: bob)
-
-        expect(FeedManager.instance.filter?(:home, s2, alice.id)).to be true
-      end
-
-      it 'returns true for a status whose spoiler text contains a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'take')
-        status = Fabricate(:status, spoiler_text: 'This is a hot take', account: bob)
-
-        expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
-      end
-
-      it 'returns true for a reblog containing a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'take')
-        status = Fabricate(:status, text: 'This is a hot take', account: bob)
-        reblog = Fabricate(:status, reblog: status, account: jeff)
-
-        expect(FeedManager.instance.filter?(:home, reblog, alice.id)).to be true
-      end
-
-      it 'returns true for a reblog whose spoiler text contains a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'take')
-        status = Fabricate(:status, spoiler_text: 'This is a hot take', account: bob)
-        reblog = Fabricate(:status, reblog: status, account: jeff)
-
-        expect(FeedManager.instance.filter?(:home, reblog, alice.id)).to be true
-      end
-
-      it 'returns true for a status with a tag that matches a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: 'jorts')
-        status = Fabricate(:status, account: bob)
-	status.tags << Fabricate(:tag, name: 'jorts')
-
-        expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
-      end
-
-      it 'returns true for a status with a tag that matches an octothorpe-prefixed muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: alice, keyword: '#jorts')
-        status = Fabricate(:status, account: bob)
-	status.tags << Fabricate(:tag, name: 'jorts')
-
-        expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
+        it 'matches substrings if whole_word is false' do
+          alice.custom_filters.create!(phrase: 'take', context: %w(home), whole_word: false, irreversible: true)
+          alice.follow!(jeff)
+          status = Fabricate(:status, text: 'shiitake', account: jeff)
+          expect(FeedManager.instance.filter?(:home, status, alice.id)).to be true
+        end
       end
     end
 
@@ -208,17 +185,10 @@ RSpec.describe FeedManager do
         bob.follow!(alice)
         expect(FeedManager.instance.filter?(:mentions, status, bob.id)).to be false
       end
-
-      it 'returns true for status that contains a muted keyword' do
-        Fabricate('Glitch::KeywordMute', account: bob, keyword: 'take')
-        status = Fabricate(:status, text: 'This is a hot take', account: alice)
-        bob.follow!(alice)
-        expect(FeedManager.instance.filter?(:mentions, status, bob.id)).to be true
-      end
     end
   end
 
-  describe '#push' do
+  describe '#push_to_home' do
     it 'trims timelines if they will have more than FeedManager::MAX_ITEMS' do
       account = Fabricate(:account)
       status = Fabricate(:status)
@@ -308,6 +278,39 @@ RSpec.describe FeedManager do
         # The second reblog should also be accepted
         expect(FeedManager.instance.push_to_home(account, reblogs.last)).to be true
       end
+    end
+
+    it "does not push when the given status's reblog is already inserted" do
+      account = Fabricate(:account)
+      reblog = Fabricate(:status)
+      status = Fabricate(:status, reblog: reblog)
+      FeedManager.instance.push_to_home(account, status)
+
+      expect(FeedManager.instance.push_to_home(account, reblog)).to eq false
+    end
+  end
+
+  describe '#push_to_list' do
+    it "does not push when the given status's reblog is already inserted" do
+      list = Fabricate(:list)
+      reblog = Fabricate(:status)
+      status = Fabricate(:status, reblog: reblog)
+      FeedManager.instance.push_to_list(list, status)
+
+      expect(FeedManager.instance.push_to_list(list, reblog)).to eq false
+    end
+  end
+
+  describe '#merge_into_timeline' do
+    it "does not push source account's statuses whose reblogs are already inserted" do
+      account = Fabricate(:account, id: 0)
+      reblog = Fabricate(:status)
+      status = Fabricate(:status, reblog: reblog)
+      FeedManager.instance.push_to_home(account, status)
+
+      FeedManager.instance.merge_into_timeline(account, reblog.account)
+
+      expect(Redis.current.zscore("feed:home:0", reblog.id)).to eq nil
     end
   end
 

@@ -145,22 +145,25 @@ class FeedManager
     redis.exists("subscribed:#{timeline_id}")
   end
 
+  def blocks_or_mutes?(receiver_id, account_ids, context)
+    Block.where(account_id: receiver_id, target_account_id: account_ids).any? ||
+      (context == :home ? Mute.where(account_id: receiver_id, target_account_id: account_ids).any? : Mute.where(account_id: receiver_id, target_account_id: account_ids, hide_notifications: true).any?)
+  end
+
   def filter_from_home?(status, receiver_id)
     return false if receiver_id == status.account_id
     return true  if status.reply? && (status.in_reply_to_id.nil? || status.in_reply_to_account_id.nil?)
-
-    return true if keyword_filter?(status, receiver_id)
-
-    check_for_mutes = [status.account_id]
-    check_for_mutes.concat(status.mentions.pluck(:account_id))
-    check_for_mutes.concat([status.reblog.account_id]) if status.reblog?
-
-    return true if Mute.where(account_id: receiver_id, target_account_id: check_for_mutes).any?
+    return true  if phrase_filtered?(status, receiver_id, :home)
 
     check_for_blocks = status.mentions.pluck(:account_id)
-    check_for_blocks.concat([status.reblog.account_id]) if status.reblog?
+    check_for_blocks.concat([status.account_id])
 
-    return true if Block.where(account_id: receiver_id, target_account_id: check_for_blocks).any?
+    if status.reblog?
+      check_for_blocks.concat([status.reblog.account_id])
+      check_for_blocks.concat(status.reblog.mentions.pluck(:account_id))
+    end
+
+    return true if blocks_or_mutes?(receiver_id, check_for_blocks, :home)
 
     if status.reply? && !status.in_reply_to_account_id.nil?                                                                      # Filter out if it's a reply
       should_filter   = !Follow.where(account_id: receiver_id, target_account_id: status.in_reply_to_account_id).exists?         # and I'm not following the person it's a reply to
@@ -177,37 +180,45 @@ class FeedManager
     false
   end
 
-  def keyword_filter?(status, receiver_id)
-    text_matcher = Glitch::KeywordMute.text_matcher_for(receiver_id)
-    tag_matcher  = Glitch::KeywordMute.tag_matcher_for(receiver_id)
+  def filter_from_mentions?(status, receiver_id)
+    return true if receiver_id == status.account_id
+    return true if phrase_filtered?(status, receiver_id, :notifications)
 
-    should_filter   = text_matcher.matches?(status.text)
-    should_filter ||= text_matcher.matches?(status.spoiler_text)
-    should_filter ||= tag_matcher.matches?(status.tags)
+    # This filter is called from NotifyService, but already after the sender of
+    # the notification has been checked for mute/block. Therefore, it's not
+    # necessary to check the author of the toot for mute/block again
+    check_for_blocks = status.mentions.pluck(:account_id)
+    check_for_blocks.concat([status.in_reply_to_account]) if status.reply? && !status.in_reply_to_account_id.nil?
 
-    if status.reblog?
-      reblog = status.reblog
-
-      should_filter ||= text_matcher.matches?(reblog.text)
-      should_filter ||= text_matcher.matches?(reblog.spoiler_text)
-      should_filter ||= tag_matcher.matches?(status.tags)
-    end
+    should_filter   = blocks_or_mutes?(receiver_id, check_for_blocks, :mentions)                                                         # Filter if it's from someone I blocked, in reply to someone I blocked, or mentioning someone I blocked (or muted)
+    should_filter ||= (status.account.silenced? && !Follow.where(account_id: receiver_id, target_account_id: status.account_id).exists?) # of if the account is silenced and I'm not following them
 
     should_filter
   end
 
-  def filter_from_mentions?(status, receiver_id)
-    return true if receiver_id == status.account_id
+  def phrase_filtered?(status, receiver_id, context)
+    active_filters = Rails.cache.fetch("filters:#{receiver_id}") { CustomFilter.where(account_id: receiver_id).active_irreversible.to_a }.to_a
 
-    check_for_blocks = [status.account_id]
-    check_for_blocks.concat(status.mentions.pluck(:account_id))
-    check_for_blocks.concat([status.in_reply_to_account]) if status.reply? && !status.in_reply_to_account_id.nil?
+    active_filters.select! { |filter| filter.context.include?(context.to_s) && !filter.expired? }
 
-    should_filter   = Block.where(account_id: receiver_id, target_account_id: check_for_blocks).any?                                     # Filter if it's from someone I blocked, in reply to someone I blocked, or mentioning someone I blocked
-    should_filter ||= (status.account.silenced? && !Follow.where(account_id: receiver_id, target_account_id: status.account_id).exists?) # of if the account is silenced and I'm not following them
-    should_filter ||= keyword_filter?(status, receiver_id)                                                                               # or if the mention contains a muted keyword
+    active_filters.map! do |filter|
+      if filter.whole_word
+        sb = filter.phrase =~ /\A[[:word:]]/ ? '\b' : ''
+        eb = filter.phrase =~ /[[:word:]]\z/ ? '\b' : ''
 
-    should_filter
+        /(?mix:#{sb}#{Regexp.escape(filter.phrase)}#{eb})/
+      else
+        /#{Regexp.escape(filter.phrase)}/i
+      end
+    end
+
+    return false if active_filters.empty?
+
+    combined_regex = active_filters.reduce { |memo, obj| Regexp.union(memo, obj) }
+    status         = status.reblog if status.reblog?
+
+    !combined_regex.match(Formatter.instance.plaintext(status)).nil? ||
+      (status.spoiler_text.present? && !combined_regex.match(status.spoiler_text).nil?)
   end
 
   # Adds a status to an account's feed, returning true if a status was
@@ -243,6 +254,14 @@ class FeedManager
         return false
       end
     else
+      # A reblog may reach earlier than the original status because of the
+      # delay of the worker deliverying the original status, the late addition
+      # by merging timelines, and other reasons.
+      # If such a reblog already exists, just do not re-insert it into the feed.
+      rank = redis.zrevrank(reblog_key, status.id)
+
+      return false unless rank.nil?
+
       redis.zadd(timeline_key, status.id, status.id)
     end
 

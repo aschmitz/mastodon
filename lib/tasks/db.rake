@@ -91,8 +91,8 @@ namespace :db do
 
         # Make sure they're using a bigint, not something else.
         if id_col.sql_type != 'bigint'
-          logger.warning "Table #{table} has an non-bigint ID " \
-                         'column, leaving it alone.'
+          Rails.logger.warn "Table #{table} has an non-bigint ID " \
+                            "column (#{id_col.sql_type}), leaving it alone."
           next
         end
 

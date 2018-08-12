@@ -10,6 +10,8 @@ class Form::AdminSettings
     :site_contact_email=,
     :site_title,
     :site_title=,
+    :site_short_description,
+    :site_short_description=,
     :site_description,
     :site_description=,
     :site_extended_description,
@@ -34,6 +36,10 @@ class Form::AdminSettings
     :activity_api_enabled=,
     :peers_api_enabled,
     :peers_api_enabled=,
+    :show_known_fediverse_at_about_page,
+    :show_known_fediverse_at_about_page=,
+    :preview_sensitive_media,
+    :preview_sensitive_media=,
     to: Setting
   )
 end

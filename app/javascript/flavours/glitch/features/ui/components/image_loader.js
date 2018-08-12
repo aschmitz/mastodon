@@ -1,15 +1,18 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
+import { LoadingBar } from 'react-redux-loading-bar';
+import ZoomableImage from './zoomable_image';
 
 export default class ImageLoader extends React.PureComponent {
 
   static propTypes = {
     alt: PropTypes.string,
     src: PropTypes.string.isRequired,
-    previewSrc: PropTypes.string.isRequired,
+    previewSrc: PropTypes.string,
     width: PropTypes.number,
     height: PropTypes.number,
+    onClick: PropTypes.func,
   }
 
   static defaultProps = {
@@ -21,9 +24,11 @@ export default class ImageLoader extends React.PureComponent {
   state = {
     loading: true,
     error: false,
+    width: null,
   }
 
   removers = [];
+  canvas = null;
 
   get canvasContext() {
     if (!this.canvas) {
@@ -43,11 +48,15 @@ export default class ImageLoader extends React.PureComponent {
     }
   }
 
+  componentWillUnmount () {
+    this.removeEventListeners();
+  }
+
   loadImage (props) {
     this.removeEventListeners();
     this.setState({ loading: true, error: false });
     Promise.all([
-      this.loadPreviewCanvas(props),
+      props.previewSrc && this.loadPreviewCanvas(props),
       this.hasSize() && this.loadOriginalImage(props),
     ].filter(Boolean))
       .then(() => {
@@ -115,10 +124,11 @@ export default class ImageLoader extends React.PureComponent {
 
   setCanvasRef = c => {
     this.canvas = c;
+    if (c) this.setState({ width: c.offsetWidth });
   }
 
   render () {
-    const { alt, src, width, height } = this.props;
+    const { alt, src, width, height, onClick } = this.props;
     const { loading } = this.state;
 
     const className = classNames('image-loader', {
@@ -128,21 +138,19 @@ export default class ImageLoader extends React.PureComponent {
 
     return (
       <div className={className}>
-        <canvas
-          className='image-loader__preview-canvas'
-          width={width}
-          height={height}
-          ref={this.setCanvasRef}
-          style={{ opacity: loading ? 1 : 0 }}
-        />
-
-        {!loading && (
-          <img
-            alt={alt}
-            className='image-loader__img'
-            src={src}
+        <LoadingBar loading={loading ? 1 : 0} className='loading-bar' style={{ width: this.state.width || width }} />
+        {loading ? (
+          <canvas
+            className='image-loader__preview-canvas'
+            ref={this.setCanvasRef}
             width={width}
             height={height}
+          />
+        ) : (
+          <ZoomableImage
+            alt={alt}
+            src={src}
+            onClick={onClick}
           />
         )}
       </div>

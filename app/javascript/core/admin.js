@@ -1,6 +1,9 @@
 //  This file will be loaded on admin pages, regardless of theme.
 
 import { delegate } from 'rails-ujs';
+import { start } from '../mastodon/common';
+
+start();
 
 function handleDeleteStatus(event) {
   const [data] = event.detail;
@@ -26,6 +29,7 @@ delegate(document, batchCheckboxClassName, 'change', () => {
   const checkAllElement = document.querySelector('#batch_checkbox_all');
   if (checkAllElement) {
     checkAllElement.checked = [].every.call(document.querySelectorAll(batchCheckboxClassName), (content) => content.checked);
+    checkAllElement.indeterminate = !checkAllElement.checked && [].some.call(document.querySelectorAll(batchCheckboxClassName), (content) => content.checked);
   }
 });
 
