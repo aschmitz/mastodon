@@ -5,8 +5,10 @@ class RemoteInteractionController < ApplicationController
 
   layout 'modal'
 
+  before_action :set_interaction_type
   before_action :set_status
   before_action :set_body_classes
+  before_action :set_pack
 
   def new
     @remote_follow = RemoteFollow.new(session_params)
@@ -44,5 +46,13 @@ class RemoteInteractionController < ApplicationController
   def set_body_classes
     @body_classes = 'modal-layout'
     @hide_header  = true
+  end
+
+  def set_pack
+    use_pack 'modal'
+  end
+
+  def set_interaction_type
+    @interaction_type = %w(reply reblog favourite).include?(params[:type]) ? params[:type] : 'reply'
   end
 end

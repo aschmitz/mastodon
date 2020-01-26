@@ -38,6 +38,10 @@ export function ListEditor () {
   return import(/* webpackChunkName: "flavours/glitch/async/list_editor" */'flavours/glitch/features/list_editor');
 }
 
+export function PinnedAccountsEditor () {
+  return import(/* webpackChunkName: "flavours/glitch/async/pinned_accounts_editor" */'flavours/glitch/features/pinned_accounts_editor');
+}
+
 export function DirectTimeline() {
   return import(/* webpackChunkName: "flavours/glitch/async/direct_timeline" */'flavours/glitch/features/direct_timeline');
 }
@@ -140,4 +144,8 @@ export function EmbedModal () {
 
 export function GettingStartedMisc () {
   return import(/* webpackChunkName: "flavours/glitch/async/getting_started_misc" */'flavours/glitch/features/getting_started_misc');
+}
+
+export function ListAdder () {
+  return import(/* webpackChunkName: "features/glitch/async/list_adder" */'flavours/glitch/features/list_adder');
 }

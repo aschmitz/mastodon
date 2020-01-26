@@ -8,14 +8,23 @@ class Api::V1::MutesController < Api::BaseController
   respond_to :json
 
   def index
-    @accounts = load_accounts
+    @data = @accounts = load_accounts
     render json: @accounts, each_serializer: REST::AccountSerializer
   end
+
+  def details
+    @data = @mutes = load_mutes
+    render json: @mutes, each_serializer: REST::MuteSerializer
+  end 
 
   private
 
   def load_accounts
     paginated_mutes.map(&:target_account)
+  end
+
+  def load_mutes
+    paginated_mutes.includes(:account, :target_account).to_a
   end
 
   def paginated_mutes
@@ -34,26 +43,34 @@ class Api::V1::MutesController < Api::BaseController
 
   def next_path
     if records_continue?
-      api_v1_mutes_url pagination_params(max_id: pagination_max_id)
+      url_for pagination_params(max_id: pagination_max_id)
     end
   end
 
   def prev_path
-    unless paginated_mutes.empty?
-      api_v1_mutes_url pagination_params(since_id: pagination_since_id)
+    unless @data.empty?
+      url_for pagination_params(since_id: pagination_since_id)
     end
   end
 
   def pagination_max_id
-    paginated_mutes.last.id
+    if params[:action] == "details"
+      @mutes.last.id
+    else
+      paginated_mutes.last.id
+    end
   end
 
   def pagination_since_id
-    paginated_mutes.first.id
+    if params[:action] == "details"
+      @mutes.first.id
+    else
+      paginated_mutes.first.id
+    end
   end
 
   def records_continue?
-    paginated_mutes.size == limit_param(DEFAULT_ACCOUNTS_LIMIT)
+    @data.size == limit_param(DEFAULT_ACCOUNTS_LIMIT)
   end
 
   def pagination_params(core_params)

@@ -30,8 +30,12 @@ class Form::AdminSettings
     :show_staff_badge=,
     :bootstrap_timeline_accounts,
     :bootstrap_timeline_accounts=,
-    :theme,
-    :theme=,
+    :hide_followers_count,
+    :hide_followers_count=,
+    :flavour,
+    :flavour=,
+    :skin,
+    :skin=,
     :min_invite_role,
     :min_invite_role=,
     :activity_api_enabled,
@@ -44,6 +48,12 @@ class Form::AdminSettings
     :preview_sensitive_media=,
     :custom_css,
     :custom_css=,
+    :profile_directory,
+    :profile_directory=,
     to: Setting
   )
+
+  def flavour_and_skin
+    "#{Setting.flavour}/#{Setting.skin}"
+  end
 end

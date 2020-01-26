@@ -9,8 +9,19 @@ const initialState = ImmutableMap({
   layout    : 'auto',
   stretch   : true,
   navbar_under : false,
+  swipe_to_change_columns: true,
   side_arm  : 'none',
   side_arm_reply_mode : 'keep',
+  show_reply_count : false,
+  always_show_spoilers_field: false,
+  confirm_missing_media_description: false,
+  confirm_before_clearing_draft: true,
+  preselect_on_reply: true,
+  inline_preview_cards: true,
+  content_warnings : ImmutableMap({
+    auto_unfold : false,
+    filter      : null,
+  }),
   collapsed : ImmutableMap({
     enabled     : true,
     auto        : ImmutableMap({
@@ -25,10 +36,15 @@ const initialState = ImmutableMap({
       user_backgrounds : false,
       preview_images   : false,
     }),
+    show_action_bar : true,
   }),
   media     : ImmutableMap({
     letterbox   : true,
     fullwidth   : true,
+  }),
+  notifications : ImmutableMap({
+    favicon_badge : false,
+    tab_badge     : true,
   }),
 });
 

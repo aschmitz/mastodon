@@ -63,6 +63,7 @@ RSpec.describe Api::V1::MutesController, type: :controller do
 
   describe 'GET #details' do
     before do
+      Fabricate(:mute, account: user.account, hide_notifications: false)
       get :details, params: { limit: 1 }
     end
 

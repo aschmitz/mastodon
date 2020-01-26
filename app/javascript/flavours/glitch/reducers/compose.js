@@ -18,6 +18,8 @@ import {
   COMPOSE_SUGGESTIONS_CLEAR,
   COMPOSE_SUGGESTIONS_READY,
   COMPOSE_SUGGESTION_SELECT,
+  COMPOSE_SUGGESTION_TAGS_UPDATE,
+  COMPOSE_TAG_HISTORY_UPDATE,
   COMPOSE_ADVANCED_OPTIONS_CHANGE,
   COMPOSE_SENSITIVITY_CHANGE,
   COMPOSE_SPOILERNESS_CHANGE,
@@ -39,6 +41,7 @@ import { privacyPreference } from 'flavours/glitch/util/privacy_preference';
 import { me } from 'flavours/glitch/util/initial_state';
 import { overwrite } from 'flavours/glitch/util/js_helpers';
 import { unescapeHTML } from 'flavours/glitch/util/html';
+import { recoverHashtags } from 'flavours/glitch/util/hashtag';
 
 const totalElefriends = 3;
 
@@ -64,6 +67,7 @@ const initialState = ImmutableMap({
   in_reply_to: null,
   is_submitting: false,
   is_uploading: false,
+  is_changing_upload: false,
   progress: 0,
   media_attachments: ImmutableList(),
   suggestion_token: null,
@@ -76,6 +80,7 @@ const initialState = ImmutableMap({
   default_sensitive: false,
   resetFileKey: Math.floor((Math.random() * 0x10000)),
   idempotencyKey: null,
+  tagHistory: ImmutableList(),
   doodle: ImmutableMap({
     fg: 'rgb(  0,    0,    0)',
     bg: 'rgb(255,  255,  255)',
@@ -114,8 +119,9 @@ function apiStatusToTextMentions (state, status) {
 }
 
 function apiStatusToTextHashtags (state, status) {
-  return ImmutableOrderedSet([]).union(status.tags.map(
-    ({ name }) => `#${name} `
+  const text = unescapeHTML(status.content);
+  return ImmutableOrderedSet([]).union(recoverHashtags(status.tags, text).map(
+    (name) => `#${name} `
   )).join('');
 }
 
@@ -125,6 +131,7 @@ function clearAll(state) {
     map.set('spoiler', false);
     map.set('spoiler_text', '');
     map.set('is_submitting', false);
+    map.set('is_changing_upload', false);
     map.set('in_reply_to', null);
     map.update(
       'advanced_options',
@@ -201,6 +208,18 @@ const insertSuggestion = (state, position, token, completion) => {
     map.set('focusDate', new Date());
     map.set('caretPosition', position + completion.length + 1);
     map.set('idempotencyKey', uuid());
+  });
+};
+
+const updateSuggestionTags = (state, token) => {
+  const prefix = token.slice(1);
+
+  return state.merge({
+    suggestions: state.get('tagHistory')
+      .filter(tag => tag.toLowerCase().startsWith(prefix.toLowerCase()))
+      .slice(0, 4)
+      .map(tag => '#' + tag),
+    suggestion_token: token,
   });
 };
 
@@ -297,8 +316,12 @@ export default function compose(state = initialState, action) {
       map.set('idempotencyKey', uuid());
 
       if (action.status.get('spoiler_text').length > 0) {
+        let spoiler_text = action.status.get('spoiler_text');
+        if (!spoiler_text.match(/^re[: ]/i)) {
+          spoiler_text = 're: '.concat(spoiler_text);
+        }
         map.set('spoiler', true);
-        map.set('spoiler_text', action.status.get('spoiler_text'));
+        map.set('spoiler_text', spoiler_text);
       } else {
         map.set('spoiler', false);
         map.set('spoiler_text', '');
@@ -320,13 +343,15 @@ export default function compose(state = initialState, action) {
       map.set('idempotencyKey', uuid());
     });
   case COMPOSE_SUBMIT_REQUEST:
-  case COMPOSE_UPLOAD_CHANGE_REQUEST:
     return state.set('is_submitting', true);
+  case COMPOSE_UPLOAD_CHANGE_REQUEST:
+    return state.set('is_changing_upload', true);
   case COMPOSE_SUBMIT_SUCCESS:
     return action.status && state.getIn(['advanced_options', 'threaded_mode']) ? continueThread(state, action.status) : clearAll(state);
   case COMPOSE_SUBMIT_FAIL:
-  case COMPOSE_UPLOAD_CHANGE_FAIL:
     return state.set('is_submitting', false);
+  case COMPOSE_UPLOAD_CHANGE_FAIL:
+    return state.set('is_changing_upload', false);
   case COMPOSE_UPLOAD_REQUEST:
     return state.set('is_uploading', true);
   case COMPOSE_UPLOAD_SUCCESS:
@@ -358,6 +383,10 @@ export default function compose(state = initialState, action) {
     return state.set('suggestions', ImmutableList(action.accounts ? action.accounts.map(item => item.id) : action.emojis)).set('suggestion_token', action.token);
   case COMPOSE_SUGGESTION_SELECT:
     return insertSuggestion(state, action.position, action.token, action.completion);
+  case COMPOSE_SUGGESTION_TAGS_UPDATE:
+    return updateSuggestionTags(state, action.token);
+  case COMPOSE_TAG_HISTORY_UPDATE:
+    return state.set('tagHistory', fromJS(action.tags));
   case TIMELINE_DELETE:
     if (action.id === state.get('in_reply_to')) {
       return state.set('in_reply_to', null);
@@ -368,10 +397,10 @@ export default function compose(state = initialState, action) {
     return insertEmoji(state, action.position, action.emoji);
   case COMPOSE_UPLOAD_CHANGE_SUCCESS:
     return state
-      .set('is_submitting', false)
+      .set('is_changing_upload', false)
       .update('media_attachments', list => list.map(item => {
         if (item.get('id') === action.media.id) {
-          return item.set('description', action.media.description);
+          return fromJS(action.media);
         }
 
         return item;
