@@ -1,9 +1,6 @@
 //  This file will be loaded on admin pages, regardless of theme.
 
 import { delegate } from 'rails-ujs';
-import { start } from '../mastodon/common';
-
-start();
 
 function handleDeleteStatus(event) {
   const [data] = event.detail;
@@ -43,4 +40,11 @@ delegate(document, '.media-spoiler-hide-button', 'click', () => {
   [].forEach.call(document.querySelectorAll('.spoiler-button.spoiler-button--visible button'), (element) => {
     element.click();
   });
+});
+
+delegate(document, '#domain_block_severity', 'change', ({ target }) => {
+  const rejectMediaDiv = document.querySelector('.input.with_label.domain_block_reject_media');
+  if (rejectMediaDiv) {
+    rejectMediaDiv.style.display = (target.value === 'suspend') ? 'none' : 'block';
+  }
 });

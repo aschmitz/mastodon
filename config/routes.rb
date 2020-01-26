@@ -23,6 +23,7 @@ Rails.application.routes.draw do
   get '.well-known/webfinger', to: 'well_known/webfinger#show', as: :webfinger
   get 'manifest', to: 'manifests#show', defaults: { format: 'json' }
   get 'intent', to: 'intents#show'
+  get 'custom.css', to: 'custom_css#show', as: :custom_css
 
   devise_scope :user do
     get '/invite/:invite_code', to: 'auth/registrations#new', as: :public_invite
@@ -74,9 +75,11 @@ Rails.application.routes.draw do
   get '/@:account_username/:id', to: 'statuses#show', as: :short_account_status
   get '/@:account_username/:id/embed', to: 'statuses#embed', as: :embed_short_account_status
 
+  get  '/interact/:id', to: 'remote_interaction#new', as: :remote_interaction
+  post '/interact/:id', to: 'remote_interaction#create'
+
   namespace :settings do
     resource :profile, only: [:show, :update]
-
     resource :preferences, only: [:show, :update]
     resource :notifications, only: [:show, :update]
     resource :import, only: [:show, :create]
@@ -102,8 +105,6 @@ Rails.application.routes.draw do
       end
     end
 
-    resources :flavours, only: [:index, :show, :update], param: :flavour
-
     resource :delete, only: [:show, :destroy]
     resource :migration, only: [:show, :update]
 
@@ -123,7 +124,7 @@ Rails.application.routes.draw do
 
   # Remote follow
   resource :remote_unfollow, only: [:create]
-  resource :authorize_follow, only: [:show, :create]
+  resource :authorize_interaction, only: [:show, :create]
   resource :share, only: [:show, :create]
 
   namespace :admin do
@@ -134,7 +135,12 @@ Rails.application.routes.draw do
     resources :email_domain_blocks, only: [:index, :new, :create, :destroy]
     resources :action_logs, only: [:index]
     resource :settings, only: [:edit, :update]
-    resources :invites, only: [:index, :create, :destroy]
+
+    resources :invites, only: [:index, :create, :destroy] do
+      collection do
+        post :deactivate_all
+      end
+    end
 
     resources :relays, only: [:index, :new, :create, :destroy] do
       member do
@@ -169,7 +175,7 @@ Rails.application.routes.draw do
       resource :change_email, only: [:show, :update]
       resource :reset, only: [:create]
       resource :silence, only: [:create, :destroy]
-      resource :suspension, only: [:create, :destroy]
+      resource :suspension, only: [:new, :create, :destroy]
       resources :statuses, only: [:index, :create, :update, :destroy]
 
       resource :confirmation, only: [:create] do
@@ -229,9 +235,6 @@ Rails.application.routes.draw do
           resource :favourite, only: :create
           post :unfavourite, to: 'favourites#destroy'
 
-          resource :bookmark, only: :create
-          post :unbookmark, to: 'bookmarks#destroy'
-
           resource :mute, only: :create
           post :unmute, to: 'mutes#destroy'
 
@@ -259,18 +262,14 @@ Rails.application.routes.draw do
 
       get '/search', to: 'search#index', as: :search
 
-      resources :follows,    only: [:create]
-      resources :media,      only: [:create, :update]
-      resources :blocks,     only: [:index]
-      resources :mutes,      only: [:index] do
-        collection do
-          get 'details'
-        end
-      end
-      resources :favourites, only: [:index]
-      resources :bookmarks,  only: [:index]
-      resources :reports,    only: [:index, :create]
-      resources :filters,    only: [:index, :create, :show, :update, :destroy]
+      resources :follows,      only: [:create]
+      resources :media,        only: [:create, :update]
+      resources :blocks,       only: [:index]
+      resources :mutes,        only: [:index]
+      resources :favourites,   only: [:index]
+      resources :reports,      only: [:index, :create]
+      resources :filters,      only: [:index, :create, :show, :update, :destroy]
+      resources :endorsements, only: [:index]
 
       namespace :apps do
         get :verify_credentials, to: 'credentials#show'
@@ -292,11 +291,10 @@ Rails.application.routes.draw do
         end
       end
 
-      resources :notifications, only: [:index, :show, :destroy] do
+      resources :notifications, only: [:index, :show] do
         collection do
           post :clear
           post :dismiss
-          delete :destroy_multiple
         end
       end
 

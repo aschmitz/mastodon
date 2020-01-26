@@ -10,16 +10,16 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2018_08_12_002835) do
+ActiveRecord::Schema.define(version: 2018_08_20_232245) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
   create_table "account_domain_blocks", id: :bigint, default: -> { "timestamp_id('account_domain_blocks'::text)" }, force: :cascade do |t|
-    t.bigint "account_id"
     t.string "domain"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
     t.index ["account_id", "domain"], name: "index_account_domain_blocks_on_account_id_and_domain", unique: true
   end
 
@@ -88,6 +88,7 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.string "actor_type"
     t.index "(((setweight(to_tsvector('simple'::regconfig, (display_name)::text), 'A'::\"char\") || setweight(to_tsvector('simple'::regconfig, (username)::text), 'B'::\"char\")) || setweight(to_tsvector('simple'::regconfig, (COALESCE(domain, ''::character varying))::text), 'C'::\"char\")))", name: "search_index", using: :gin
     t.index "lower((username)::text), lower((domain)::text)", name: "index_accounts_on_username_and_domain_lower", unique: true
+    t.index ["moved_to_account_id"], name: "index_accounts_on_moved_to_account_id"
     t.index ["uri"], name: "index_accounts_on_uri"
     t.index ["url"], name: "index_accounts_on_url"
   end
@@ -116,12 +117,13 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "blocks", id: :bigint, default: -> { "timestamp_id('blocks'::text)" }, force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "target_account_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id", null: false
+    t.bigint "target_account_id", null: false
     t.string "uri"
     t.index ["account_id", "target_account_id"], name: "index_blocks_on_account_id_and_target_account_id", unique: true
+    t.index ["target_account_id"], name: "index_blocks_on_target_account_id"
   end
 
   create_table "bookmarks", id: :bigint, default: -> { "timestamp_id('bookmarks'::text)" }, force: :cascade do |t|
@@ -135,8 +137,8 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "conversation_mutes", id: :bigint, default: -> { "timestamp_id('conversation_mutes'::text)" }, force: :cascade do |t|
-    t.bigint "account_id", null: false
     t.bigint "conversation_id", null: false
+    t.bigint "account_id", null: false
     t.index ["account_id", "conversation_id"], name: "index_conversation_mutes_on_account_id_and_conversation_id", unique: true
   end
 
@@ -185,17 +187,18 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "email_domain_blocks", id: :bigint, default: -> { "timestamp_id('email_domain_blocks'::text)" }, force: :cascade do |t|
-    t.string "domain", null: false
+    t.string "domain", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_email_domain_blocks_on_domain", unique: true
   end
 
   create_table "favourites", id: :bigint, default: -> { "timestamp_id('favourites'::text)" }, force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "status_id", null: false
+  create_table "favourites", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id", null: false
+    t.bigint "status_id", null: false
     t.index ["account_id", "id"], name: "index_favourites_on_account_id_and_id"
     t.index ["account_id", "status_id"], name: "index_favourites_on_account_id_and_status_id", unique: true
     t.index ["status_id"], name: "index_favourites_on_status_id"
@@ -219,6 +222,7 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.boolean "show_reblogs", default: true, null: false
     t.string "uri"
     t.index ["account_id", "target_account_id"], name: "index_follows_on_account_id_and_target_account_id", unique: true
+    t.index ["target_account_id"], name: "index_follows_on_target_account_id"
   end
 
   create_table "identities", id: :bigint, default: -> { "timestamp_id('identities'::text)" }, force: :cascade do |t|
@@ -279,12 +283,12 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.integer "file_file_size"
     t.datetime "file_updated_at"
     t.string "remote_url", default: "", null: false
-    t.bigint "account_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "shortcode"
     t.integer "type", default: 0, null: false
     t.json "file_meta"
+    t.bigint "account_id"
     t.text "description"
     t.index ["account_id"], name: "index_media_attachments_on_account_id"
     t.index ["shortcode"], name: "index_media_attachments_on_shortcode", unique: true
@@ -292,10 +296,10 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "mentions", id: :bigint, default: -> { "timestamp_id('mentions'::text)" }, force: :cascade do |t|
-    t.bigint "account_id"
     t.bigint "status_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id"
     t.index ["account_id", "status_id"], name: "index_mentions_on_account_id_and_status_id", unique: true
     t.index ["status_id"], name: "index_mentions_on_status_id"
   end
@@ -307,29 +311,32 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.bigint "target_account_id", null: false
     t.boolean "hide_notifications", default: true, null: false
     t.index ["account_id", "target_account_id"], name: "index_mutes_on_account_id_and_target_account_id", unique: true
+    t.index ["target_account_id"], name: "index_mutes_on_target_account_id"
   end
 
   create_table "notifications", id: :bigint, default: -> { "timestamp_id('notifications'::text)" }, force: :cascade do |t|
-    t.bigint "account_id", null: false
     t.bigint "activity_id", null: false
     t.string "activity_type", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id", null: false
     t.bigint "from_account_id", null: false
     t.index ["account_id", "activity_id", "activity_type"], name: "account_activity", unique: true
     t.index ["account_id", "id"], name: "index_notifications_on_account_id_and_id", order: { id: :desc }
     t.index ["activity_id", "activity_type"], name: "index_notifications_on_activity_id_and_activity_type"
+    t.index ["from_account_id"], name: "index_notifications_on_from_account_id"
   end
 
   create_table "oauth_access_grants", id: :bigint, default: -> { "timestamp_id('oauth_access_grants'::text)" }, force: :cascade do |t|
-    t.bigint "resource_owner_id", null: false
-    t.bigint "application_id", null: false
     t.string "token", null: false
     t.integer "expires_in", null: false
     t.text "redirect_uri", null: false
     t.datetime "created_at", null: false
     t.datetime "revoked_at"
     t.string "scopes"
+    t.bigint "application_id", null: false
+    t.bigint "resource_owner_id", null: false
+    t.index ["resource_owner_id"], name: "index_oauth_access_grants_on_resource_owner_id"
     t.index ["token"], name: "index_oauth_access_grants_on_token", unique: true
   end
 
@@ -357,8 +364,9 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.datetime "updated_at"
     t.boolean "superapp", default: false, null: false
     t.string "website"
-    t.bigint "owner_id"
     t.string "owner_type"
+    t.bigint "owner_id"
+    t.boolean "confidential", default: true, null: false
     t.index ["owner_id", "owner_type"], name: "index_oauth_applications_on_owner_id_and_owner_type"
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
@@ -393,11 +401,10 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
 
   create_table "relays", id: :bigint, default: -> { "timestamp_id('relays'::text)" }, force: :cascade do |t|
     t.string "inbox_url", default: "", null: false
-    t.boolean "enabled", default: false, null: false
     t.string "follow_activity_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["enabled"], name: "index_relays_on_enabled"
+    t.integer "state", default: 0, null: false
   end
 
   create_table "report_notes", id: :bigint, default: -> { "timestamp_id('report_notes'::text)" }, force: :cascade do |t|
@@ -411,14 +418,14 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "reports", id: :bigint, default: -> { "timestamp_id('reports'::text)" }, force: :cascade do |t|
-    t.bigint "account_id", null: false
-    t.bigint "target_account_id", null: false
     t.bigint "status_ids", default: [], null: false, array: true
     t.text "comment", default: "", null: false
     t.boolean "action_taken", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "account_id", null: false
     t.bigint "action_taken_by_account_id"
+    t.bigint "target_account_id", null: false
     t.bigint "assigned_account_id"
     t.index ["account_id"], name: "index_reports_on_account_id"
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
@@ -433,6 +440,7 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.inet "ip"
     t.bigint "access_token_id"
     t.bigint "web_push_subscription_id"
+    t.index ["access_token_id"], name: "index_session_activations_on_access_token_id"
     t.index ["session_id"], name: "index_session_activations_on_session_id", unique: true
     t.index ["user_id"], name: "index_session_activations_on_user_id"
   end
@@ -441,9 +449,9 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.string "var", null: false
     t.text "value"
     t.string "thing_type"
-    t.bigint "thing_id"
     t.datetime "created_at"
     t.datetime "updated_at"
+    t.bigint "thing_id"
     t.index ["thing_type", "thing_id", "var"], name: "index_settings_on_thing_type_and_thing_id_and_var", unique: true
   end
 
@@ -467,6 +475,16 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.index ["account_id", "status_id"], name: "index_status_pins_on_account_id_and_status_id", unique: true
   end
 
+  create_table "status_stats", force: :cascade do |t|
+    t.bigint "status_id", null: false
+    t.bigint "replies_count", default: 0, null: false
+    t.bigint "reblogs_count", default: 0, null: false
+    t.bigint "favourites_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["status_id"], name: "index_status_stats_on_status_id", unique: true
+  end
+
   create_table "statuses", id: :bigint, default: -> { "timestamp_id('statuses'::text)" }, force: :cascade do |t|
     t.string "uri"
     t.bigint "account_id", null: false
@@ -482,13 +500,12 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.bigint "application_id"
     t.text "spoiler_text", default: "", null: false
     t.boolean "reply", default: false, null: false
-    t.integer "favourites_count", default: 0, null: false
-    t.integer "reblogs_count", default: 0, null: false
     t.string "language"
     t.bigint "conversation_id"
     t.boolean "local"
     t.boolean "local_only"
     t.index ["account_id", "id", "visibility", "updated_at"], name: "index_statuses_20180106", order: { id: :desc }
+    t.index ["in_reply_to_account_id"], name: "index_statuses_on_in_reply_to_account_id"
     t.index ["in_reply_to_id"], name: "index_statuses_on_in_reply_to_id"
     t.index ["reblog_of_id", "account_id"], name: "index_statuses_on_reblog_of_id_and_account_id"
     t.index ["uri"], name: "index_statuses_on_uri", unique: true
@@ -502,12 +519,12 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "stream_entries", id: :bigint, default: -> { "timestamp_id('stream_entries'::text)" }, force: :cascade do |t|
-    t.bigint "account_id"
     t.bigint "activity_id"
     t.string "activity_type"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.boolean "hidden", default: false, null: false
+    t.bigint "account_id"
     t.index ["account_id", "activity_type", "id"], name: "index_stream_entries_on_account_id_and_activity_type_and_id"
     t.index ["activity_id", "activity_type"], name: "index_stream_entries_on_activity_id_and_activity_type"
   end
@@ -517,11 +534,11 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
     t.string "secret"
     t.datetime "expires_at"
     t.boolean "confirmed", default: false, null: false
-    t.bigint "account_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "last_successful_delivery_at"
     t.string "domain"
+    t.bigint "account_id", null: false
     t.index ["account_id", "callback_url"], name: "index_subscriptions_on_account_id_and_callback_url", unique: true
   end
 
@@ -586,10 +603,10 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   end
 
   create_table "web_settings", id: :bigint, default: -> { "timestamp_id('web_settings'::text)" }, force: :cascade do |t|
-    t.bigint "user_id", null: false
     t.json "data"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_web_settings_on_user_id", unique: true
   end
 
@@ -644,6 +661,7 @@ ActiveRecord::Schema.define(version: 2018_08_12_002835) do
   add_foreign_key "session_activations", "users", on_delete: :cascade
   add_foreign_key "status_pins", "accounts", on_delete: :cascade
   add_foreign_key "status_pins", "statuses", on_delete: :cascade
+  add_foreign_key "status_stats", "statuses", on_delete: :cascade
   add_foreign_key "statuses", "accounts", column: "in_reply_to_account_id", on_delete: :nullify
   add_foreign_key "statuses", "accounts", on_delete: :cascade
   add_foreign_key "statuses", "statuses", column: "in_reply_to_id", on_delete: :nullify

@@ -13,8 +13,7 @@ class ApplicationController < ActionController::Base
 
   helper_method :current_account
   helper_method :current_session
-  helper_method :current_flavour
-  helper_method :current_skin
+  helper_method :current_theme
   helper_method :single_user_mode?
   helper_method :use_seamless_external_login?
 
@@ -25,7 +24,7 @@ class ApplicationController < ActionController::Base
   rescue_from Mastodon::NotPermittedError, with: :forbidden
 
   before_action :store_current_location, except: :raise_not_found, unless: :devise_controller?
-  before_action :check_suspension, if: :user_signed_in?
+  before_action :check_user_permissions, if: :user_signed_in?
 
   def raise_not_found
     raise ActionController::RoutingError, "No route matches #{params[:unmatched_route]}"
@@ -49,81 +48,12 @@ class ApplicationController < ActionController::Base
     forbidden unless current_user&.staff?
   end
 
-  def check_suspension
-    forbidden if current_user.account.suspended?
+  def check_user_permissions
+    forbidden if current_user.disabled? || current_user.account.suspended?
   end
 
   def after_sign_out_path_for(_resource_or_scope)
     new_user_session_path
-  end
-
-  def pack(data, pack_name, skin = 'default')
-    return nil unless pack?(data, pack_name)
-    pack_data = {
-      common: pack_name == 'common' ? nil : resolve_pack(data['name'] ? Themes.instance.flavour(current_flavour) : Themes.instance.core, 'common', skin),
-      flavour: data['name'],
-      pack: pack_name,
-      preload: nil,
-      skin: nil,
-      supported_locales: data['locales'],
-    }
-    if data['pack'][pack_name].is_a?(Hash)
-      pack_data[:common] = nil if data['pack'][pack_name]['use_common'] == false
-      pack_data[:pack] = nil unless data['pack'][pack_name]['filename']
-      if data['pack'][pack_name]['preload']
-        pack_data[:preload] = [data['pack'][pack_name]['preload']] if data['pack'][pack_name]['preload'].is_a?(String)
-        pack_data[:preload] = data['pack'][pack_name]['preload'] if data['pack'][pack_name]['preload'].is_a?(Array)
-      end
-      if skin != 'default' && data['skin'][skin]
-        pack_data[:skin] = skin if data['skin'][skin].include?(pack_name)
-      else  #  default skin
-        pack_data[:skin] = 'default' if data['pack'][pack_name]['stylesheet']
-      end
-    end
-    pack_data
-  end
-
-  def pack?(data, pack_name)
-    if data['pack'].is_a?(Hash) && data['pack'].key?(pack_name)
-      return true if data['pack'][pack_name].is_a?(String) || data['pack'][pack_name].is_a?(Hash)
-    end
-    false
-  end
-
-  def nil_pack(data, pack_name, skin = 'default')
-    {
-      common: pack_name == 'common' ? nil : resolve_pack(data['name'] ? Themes.instance.flavour(current_flavour) : Themes.instance.core, 'common', skin),
-      flavour: data['name'],
-      pack: nil,
-      preload: nil,
-      skin: nil,
-      supported_locales: data['locales'],
-    }
-  end
-
-  def resolve_pack(data, pack_name, skin = 'default')
-    result = pack(data, pack_name, skin)
-    unless result
-      if data['name'] && data.key?('fallback')
-        if data['fallback'].nil?
-          return nil_pack(data, pack_name, skin)
-        elsif data['fallback'].is_a?(String) && Themes.instance.flavour(data['fallback'])
-          return resolve_pack(Themes.instance.flavour(data['fallback']), pack_name)
-        elsif data['fallback'].is_a?(Array)
-          data['fallback'].each do |fallback|
-            return resolve_pack(Themes.instance.flavour(fallback), pack_name) if Themes.instance.flavour(fallback)
-          end
-        end
-        return nil_pack(data, pack_name, skin)
-      end
-      return data.key?('name') && data['name'] != Setting.default_settings['flavour'] ? resolve_pack(Themes.instance.flavour(Setting.default_settings['flavour']), pack_name) : nil_pack(data, pack_name, skin)
-    end
-    result
-  end
-
-  def use_pack(pack_name)
-    @core = resolve_pack(Themes.instance.core, pack_name)
-    @theme = resolve_pack(Themes.instance.flavour(current_flavour), pack_name, current_skin)
   end
 
   protected
@@ -164,26 +94,17 @@ class ApplicationController < ActionController::Base
     @current_session ||= SessionActivation.find_by(session_id: cookies.signed['_session_id'])
   end
 
-  def current_flavour
-    return Setting.default_settings['flavour'] unless Themes.instance.flavours.include? current_user&.setting_flavour
-    current_user.setting_flavour
-  end
-
-  def current_skin
-    return 'default' unless Themes.instance.skins_for(current_flavour).include? current_user&.setting_skin
-    current_user.setting_skin
+  def current_theme
+    return Setting.theme unless Themes.instance.names.include? current_user&.setting_theme
+    current_user.setting_theme
   end
 
   def cache_collection(raw, klass)
     return raw unless klass.respond_to?(:with_includes)
 
     raw                    = raw.cache_ids.to_a if raw.is_a?(ActiveRecord::Relation)
-    uncached_ids           = []
-    cached_keys_with_value = Rails.cache.read_multi(*raw.map(&:cache_key))
-
-    raw.each do |item|
-      uncached_ids << item.id unless cached_keys_with_value.key?(item.cache_key)
-    end
+    cached_keys_with_value = Rails.cache.read_multi(*raw).transform_keys(&:id)
+    uncached_ids           = raw.map(&:id) - cached_keys_with_value.keys
 
     klass.reload_stale_associations!(cached_keys_with_value.values) if klass.respond_to?(:reload_stale_associations!)
 
@@ -191,11 +112,11 @@ class ApplicationController < ActionController::Base
       uncached = klass.where(id: uncached_ids).with_includes.map { |item| [item.id, item] }.to_h
 
       uncached.each_value do |item|
-        Rails.cache.write(item.cache_key, item)
+        Rails.cache.write(item, item)
       end
     end
 
-    raw.map { |item| cached_keys_with_value[item.cache_key] || uncached[item.id] }.compact
+    raw.map { |item| cached_keys_with_value[item.id] || uncached[item.id] }.compact
   end
 
   def respond_with_error(code)
@@ -203,7 +124,6 @@ class ApplicationController < ActionController::Base
       format.any  { head code }
       format.html do
         set_locale
-        use_pack 'error'
         render "errors/#{code}", layout: 'error', status: code
       end
     end
@@ -211,7 +131,6 @@ class ApplicationController < ActionController::Base
 
   def render_cached_json(cache_key, **options)
     options[:expires_in] ||= 3.minutes
-    cache_key              = cache_key.join(':') if cache_key.is_a?(Enumerable)
     cache_public           = options.key?(:public) ? options.delete(:public) : true
     content_type           = options.delete(:content_type) || 'application/json'
 
