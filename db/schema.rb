@@ -194,7 +194,6 @@ ActiveRecord::Schema.define(version: 2018_08_20_232245) do
   end
 
   create_table "favourites", id: :bigint, default: -> { "timestamp_id('favourites'::text)" }, force: :cascade do |t|
-  create_table "favourites", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "account_id", null: false
@@ -475,7 +474,7 @@ ActiveRecord::Schema.define(version: 2018_08_20_232245) do
     t.index ["account_id", "status_id"], name: "index_status_pins_on_account_id_and_status_id", unique: true
   end
 
-  create_table "status_stats", force: :cascade do |t|
+  create_table "status_stats", id: :bigint, default: -> { "timestamp_id('status_stats'::text)" }, force: :cascade do |t|
     t.bigint "status_id", null: false
     t.bigint "replies_count", default: 0, null: false
     t.bigint "reblogs_count", default: 0, null: false
