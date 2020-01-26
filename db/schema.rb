@@ -15,7 +15,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
-  create_table "account_conversations", force: :cascade do |t|
+  create_table "account_conversations", id: :bigint, default: -> { "timestamp_id('account_conversations'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "conversation_id"
     t.bigint "participant_account_ids", default: [], null: false, array: true
@@ -56,7 +56,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["target_account_id"], name: "index_account_pins_on_target_account_id"
   end
 
-  create_table "account_stats", force: :cascade do |t|
+  create_table "account_stats", id: :bigint, default: -> { "timestamp_id('account_stats'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "statuses_count", default: 0, null: false
     t.bigint "following_count", default: 0, null: false
@@ -67,7 +67,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["account_id"], name: "index_account_stats_on_account_id", unique: true
   end
 
-  create_table "account_tag_stats", force: :cascade do |t|
+  create_table "account_tag_stats", id: :bigint, default: -> { "timestamp_id('account_tag_stats'::text)" }, force: :cascade do |t|
     t.bigint "tag_id", null: false
     t.bigint "accounts_count", default: 0, null: false
     t.boolean "hidden", default: false, null: false
@@ -76,13 +76,13 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["tag_id"], name: "index_account_tag_stats_on_tag_id", unique: true
   end
 
-  create_table "account_warning_presets", force: :cascade do |t|
+  create_table "account_warning_presets", id: :bigint, default: -> { "timestamp_id('account_warning_presets'::text)" }, force: :cascade do |t|
     t.text "text", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
   end
 
-  create_table "account_warnings", force: :cascade do |t|
+  create_table "account_warnings", id: :bigint, default: -> { "timestamp_id('account_warnings'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "target_account_id"
     t.integer "action", default: 0, null: false
@@ -431,7 +431,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 
-  create_table "pghero_space_stats", force: :cascade do |t|
+  create_table "pghero_space_stats", id: :bigint, default: -> { "timestamp_id('pghero_space_stats'::text)" }, force: :cascade do |t|
     t.text "database"
     t.text "schema"
     t.text "relation"
@@ -500,7 +500,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
-  create_table "scheduled_statuses", force: :cascade do |t|
+  create_table "scheduled_statuses", id: :bigint, default: -> { "timestamp_id('scheduled_statuses'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "scheduled_at"
     t.jsonb "params"
@@ -627,7 +627,7 @@ ActiveRecord::Schema.define(version: 2019_01_17_114553) do
     t.index ["name"], name: "index_tags_on_name", unique: true
   end
 
-  create_table "tombstones", force: :cascade do |t|
+  create_table "tombstones", id: :bigint, default: -> { "timestamp_id('tombstones'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.string "uri", null: false
     t.datetime "created_at", null: false
