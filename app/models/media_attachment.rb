@@ -18,6 +18,7 @@
 #  account_id          :bigint(8)
 #  description         :text
 #  scheduled_status_id :bigint(8)
+#  blurhash            :string
 #
 
 class MediaAttachment < ApplicationRecord
@@ -25,14 +26,19 @@ class MediaAttachment < ApplicationRecord
 
   enum type: [:image, :gifv, :video, :audio, :unknown]
 
-  IMAGE_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif'].freeze
+  IMAGE_FILE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].freeze
   VIDEO_FILE_EXTENSIONS = ['.webm', '.mp4', '.m4v', '.mov'].freeze
   AUDIO_FILE_EXTENSIONS = ['.mp3', '.m4a', '.wav', '.ogg'].freeze
 
-  IMAGE_MIME_TYPES             = ['image/jpeg', 'image/png', 'image/gif'].freeze
+  IMAGE_MIME_TYPES             = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].freeze
   VIDEO_MIME_TYPES             = ['video/webm', 'video/mp4', 'video/quicktime'].freeze
   VIDEO_CONVERTIBLE_MIME_TYPES = ['video/webm', 'video/quicktime'].freeze
   AUDIO_MIME_TYPES             = ['audio/mpeg', 'audio/mp4', 'audio/vnd.wav', 'audio/wav', 'audio/x-wav', 'audio/x-wave', 'audio/ogg',].freeze
+
+  BLURHASH_OPTIONS = {
+    x_comp: 4,
+    y_comp: 4,
+  }.freeze
 
   IMAGE_STYLES = {
     original: {
@@ -43,6 +49,7 @@ class MediaAttachment < ApplicationRecord
     small: {
       pixels: 160_000, # 400x400px
       file_geometry_parser: FastGeometryParser,
+      blurhash: BLURHASH_OPTIONS,
     },
   }.freeze
 
@@ -71,6 +78,8 @@ class MediaAttachment < ApplicationRecord
       },
       format: 'png',
       time: 0,
+      file_geometry_parser: FastGeometryParser,
+      blurhash: BLURHASH_OPTIONS,
     },
   }.freeze
 
@@ -92,8 +101,8 @@ class MediaAttachment < ApplicationRecord
     },
   }.freeze
 
-  IMAGE_LIMIT = 8.megabytes
-  VIDEO_LIMIT = 40.megabytes
+  IMAGE_LIMIT = (ENV['MAX_IMAGE_SIZE'] || 8.megabytes).to_i
+  VIDEO_LIMIT = (ENV['MAX_VIDEO_SIZE'] || 40.megabytes).to_i
 
   belongs_to :account,          inverse_of: :media_attachments, optional: true
   belongs_to :status,           inverse_of: :media_attachments, optional: true
@@ -105,8 +114,8 @@ class MediaAttachment < ApplicationRecord
                     convert_options: { all: '-quality 90 -strip' }
 
   validates_attachment_content_type :file, content_type: IMAGE_MIME_TYPES + VIDEO_MIME_TYPES + AUDIO_MIME_TYPES
-  validates_attachment_size :file, less_than: IMAGE_LIMIT, unless: :video?
-  validates_attachment_size :file, less_than: VIDEO_LIMIT, if: :video?
+  validates_attachment_size :file, less_than: IMAGE_LIMIT, unless: :video_or_gifv?
+  validates_attachment_size :file, less_than: VIDEO_LIMIT, if: :video_or_gifv?
   remotable_attachment :file, VIDEO_LIMIT
 
   include Attachmentable
@@ -127,6 +136,10 @@ class MediaAttachment < ApplicationRecord
 
   def needs_redownload?
     file.blank? && remote_url.present?
+  end
+
+  def video_or_gifv?
+    video? || gifv?
   end
 
   def to_param
@@ -182,13 +195,13 @@ class MediaAttachment < ApplicationRecord
 
     def file_processors(f)
       if f.file_content_type == 'image/gif'
-        [:gif_transcoder]
+        [:gif_transcoder, :blurhash_transcoder]
       elsif VIDEO_MIME_TYPES.include? f.file_content_type
-        [:video_transcoder]
+        [:video_transcoder, :blurhash_transcoder]
       elsif AUDIO_MIME_TYPES.include? f.file_content_type
         [:audio_transcoder]
       else
-        [:lazy_thumbnail]
+        [:lazy_thumbnail, :blurhash_transcoder]
       end
     end
   end

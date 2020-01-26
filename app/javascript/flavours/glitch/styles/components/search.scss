@@ -12,12 +12,13 @@
 .search__icon {
   .fa {
     position: absolute;
-    top: 10px;
+    top: 16px;
     right: 10px;
     z-index: 2;
     display: inline-block;
     opacity: 0;
     transition: all 100ms linear;
+    transition-property: transform, opacity;
     font-size: 18px;
     width: 18px;
     height: 18px;
@@ -41,7 +42,7 @@
   }
 
   .fa-times-circle {
-    top: 11px;
+    top: 17px;
     transform: rotate(0deg);
     cursor: pointer;
 

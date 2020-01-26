@@ -14,6 +14,7 @@ import Video from 'flavours/glitch/features/video';
 import VisibilityIcon from 'flavours/glitch/components/status_visibility_icon';
 import scheduleIdleTask from 'flavours/glitch/util/schedule_idle_task';
 import classNames from 'classnames';
+import PollContainer from 'flavours/glitch/containers/poll_container';
 
 export default class DetailedStatus extends ImmutablePureComponent {
 
@@ -22,16 +23,18 @@ export default class DetailedStatus extends ImmutablePureComponent {
   };
 
   static propTypes = {
-    status: ImmutablePropTypes.map.isRequired,
+    status: ImmutablePropTypes.map,
     settings: ImmutablePropTypes.map.isRequired,
     onOpenMedia: PropTypes.func.isRequired,
     onOpenVideo: PropTypes.func.isRequired,
-    onToggleHidden: PropTypes.func.isRequired,
+    onToggleHidden: PropTypes.func,
     expanded: PropTypes.bool,
     measureHeight: PropTypes.bool,
     onHeightChange: PropTypes.func,
     domain: PropTypes.string.isRequired,
     compact: PropTypes.bool,
+    showMedia: PropTypes.bool,
+    onToggleMediaVisibility: PropTypes.func,
   };
 
   state = {
@@ -41,7 +44,9 @@ export default class DetailedStatus extends ImmutablePureComponent {
   handleAccountClick = (e) => {
     if (e.button === 0 && !(e.ctrlKey || e.altKey || e.metaKey) && this.context.router) {
       e.preventDefault();
-      this.context.router.history.push(`/accounts/${this.props.status.getIn(['account', 'id'])}`);
+      let state = {...this.context.router.history.location.state};
+      state.mastodonBackSteps = (state.mastodonBackSteps || 0) + 1;
+      this.context.router.history.push(`/accounts/${this.props.status.getIn(['account', 'id'])}`, state);
     }
 
     e.stopPropagation();
@@ -50,7 +55,9 @@ export default class DetailedStatus extends ImmutablePureComponent {
   parseClick = (e, destination) => {
     if (e.button === 0 && !(e.ctrlKey || e.altKey || e.metaKey) && this.context.router) {
       e.preventDefault();
-      this.context.router.history.push(destination);
+      let state = {...this.context.router.history.location.state};
+      state.mastodonBackSteps = (state.mastodonBackSteps || 0) + 1;
+      this.context.router.history.push(destination, state);
     }
 
     e.stopPropagation();
@@ -79,6 +86,10 @@ export default class DetailedStatus extends ImmutablePureComponent {
     this._measureHeight(prevState.height !== this.state.height);
   }
 
+  handleChildUpdate = () => {
+    this._measureHeight();
+  }
+
   handleModalLink = e => {
     e.preventDefault();
 
@@ -94,7 +105,7 @@ export default class DetailedStatus extends ImmutablePureComponent {
   }
 
   render () {
-    const status = this.props.status.get('reblog') ? this.props.status.get('reblog') : this.props.status;
+    const status = (this.props.status && this.props.status.get('reblog')) ? this.props.status.get('reblog') : this.props.status;
     const { expanded, onToggleHidden, settings } = this.props;
     const outerStyle = { boxSizing: 'border-box' };
     const { compact } = this.props;
@@ -103,7 +114,7 @@ export default class DetailedStatus extends ImmutablePureComponent {
       return null;
     }
 
-    let media           = '';
+    let media           = null;
     let mediaIcon       = null;
     let applicationLink = '';
     let reblogLink = '';
@@ -114,7 +125,10 @@ export default class DetailedStatus extends ImmutablePureComponent {
       outerStyle.height = `${this.state.height}px`;
     }
 
-    if (status.get('media_attachments').size > 0) {
+    if (status.get('poll')) {
+      media = <PollContainer pollId={status.get('poll')} />;
+      mediaIcon = 'tasks';
+    } else if (status.get('media_attachments').size > 0) {
       if (status.get('media_attachments').some(item => item.get('type') === 'unknown')) {
         media = <AttachmentList media={status.get('media_attachments')} />;
       } else if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
@@ -122,6 +136,7 @@ export default class DetailedStatus extends ImmutablePureComponent {
         media = (
           <Video
             preview={video.get('preview_url')}
+            blurhash={video.get('blurhash')}
             src={video.get('url')}
             alt={video.get('description')}
             inline
@@ -131,6 +146,8 @@ export default class DetailedStatus extends ImmutablePureComponent {
             preventPlayback={!expanded}
             onOpenVideo={this.handleOpenVideo}
             autoplay
+            visible={this.props.showMedia}
+            onToggleVisibility={this.props.onToggleMediaVisibility}
           />
         );
         mediaIcon = 'video-camera';
@@ -144,11 +161,16 @@ export default class DetailedStatus extends ImmutablePureComponent {
             fullwidth={settings.getIn(['media', 'fullwidth'])}
             hidden={!expanded}
             onOpenMedia={this.props.onOpenMedia}
+            visible={this.props.showMedia}
+            onToggleVisibility={this.props.onToggleMediaVisibility}
           />
         );
         mediaIcon = 'picture-o';
       }
-    } else media = <Card onOpenMedia={this.props.onOpenMedia} card={status.get('card', null)} />;
+    } else if (status.get('card')) {
+      media = <Card onOpenMedia={this.props.onOpenMedia} card={status.get('card')} />;
+      mediaIcon = 'link';
+    }
 
     if (status.get('application')) {
       applicationLink = <span> · <a className='detailed-status__application' href={status.getIn(['application', 'website'])} target='_blank' rel='noopener'>{status.getIn(['application', 'name'])}</a></span>;
@@ -218,6 +240,8 @@ export default class DetailedStatus extends ImmutablePureComponent {
             collapsed={false}
             onExpandedToggle={onToggleHidden}
             parseClick={this.parseClick}
+            onUpdate={this.handleChildUpdate}
+            disabled
           />
 
           <div className='detailed-status__meta'>
