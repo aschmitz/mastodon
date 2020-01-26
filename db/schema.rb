@@ -15,7 +15,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
-  create_table "account_aliases", force: :cascade do |t|
+  create_table "account_aliases", id: :bigint, default: -> { "timestamp_id('account_aliases'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.string "acct", default: "", null: false
     t.string "uri", default: "", null: false
@@ -45,7 +45,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["account_id", "domain"], name: "index_account_domain_blocks_on_account_id_and_domain", unique: true
   end
 
-  create_table "account_identity_proofs", force: :cascade do |t|
+  create_table "account_identity_proofs", id: :bigint, default: -> { "timestamp_id('account_identity_proofs'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.string "provider", default: "", null: false
     t.string "provider_username", default: "", null: false
@@ -58,7 +58,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["account_id"], name: "index_account_identity_proofs_on_account_id"
   end
 
-  create_table "account_migrations", force: :cascade do |t|
+  create_table "account_migrations", id: :bigint, default: -> { "timestamp_id('account_migrations'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.string "acct", default: "", null: false
     t.bigint "followers_count", default: 0, null: false
@@ -196,7 +196,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["target_type", "target_id"], name: "index_admin_action_logs_on_target_type_and_target_id"
   end
 
-  create_table "announcement_mutes", force: :cascade do |t|
+  create_table "announcement_mutes", id: :bigint, default: -> { "timestamp_id('announcement_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "announcement_id"
     t.datetime "created_at", null: false
@@ -206,7 +206,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["announcement_id"], name: "index_announcement_mutes_on_announcement_id"
   end
 
-  create_table "announcement_reactions", force: :cascade do |t|
+  create_table "announcement_reactions", id: :bigint, default: -> { "timestamp_id('announcement_reactions'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "announcement_id"
     t.string "name", default: "", null: false
@@ -219,7 +219,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["custom_emoji_id"], name: "index_announcement_reactions_on_custom_emoji_id"
   end
 
-  create_table "announcements", force: :cascade do |t|
+  create_table "announcements", id: :bigint, default: -> { "timestamp_id('announcements'::text)" }, force: :cascade do |t|
     t.text "text", default: "", null: false
     t.boolean "published", default: false, null: false
     t.boolean "all_day", default: false, null: false
@@ -274,7 +274,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["uri"], name: "index_conversations_on_uri", unique: true
   end
 
-  create_table "custom_emoji_categories", force: :cascade do |t|
+  create_table "custom_emoji_categories", id: :bigint, default: -> { "timestamp_id('custom_emoji_categories'::text)" }, force: :cascade do |t|
     t.string "name"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -310,7 +310,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["account_id"], name: "index_custom_filters_on_account_id"
   end
 
-  create_table "domain_allows", force: :cascade do |t|
+  create_table "domain_allows", id: :bigint, default: -> { "timestamp_id('domain_allows'::text)" }, force: :cascade do |t|
     t.string "domain", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -346,7 +346,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["status_id"], name: "index_favourites_on_status_id"
   end
 
-  create_table "featured_tags", force: :cascade do |t|
+  create_table "featured_tags", id: :bigint, default: -> { "timestamp_id('featured_tags'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "tag_id"
     t.bigint "statuses_count", default: 0, null: false
@@ -432,7 +432,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["account_id"], name: "index_lists_on_account_id"
   end
 
-  create_table "markers", force: :cascade do |t|
+  create_table "markers", id: :bigint, default: -> { "timestamp_id('markers'::text)" }, force: :cascade do |t|
     t.bigint "user_id"
     t.string "timeline", default: "", null: false
     t.bigint "last_read_id", default: 0, null: false
@@ -551,7 +551,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["database", "captured_at"], name: "index_pghero_space_stats_on_database_and_captured_at"
   end
 
-  create_table "poll_votes", force: :cascade do |t|
+  create_table "poll_votes", id: :bigint, default: -> { "timestamp_id('poll_votes'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "poll_id"
     t.integer "choice", default: 0, null: false
@@ -562,7 +562,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["poll_id"], name: "index_poll_votes_on_poll_id"
   end
 
-  create_table "polls", force: :cascade do |t|
+  create_table "polls", id: :bigint, default: -> { "timestamp_id('polls'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "status_id"
     t.datetime "expires_at"
@@ -766,7 +766,7 @@ ActiveRecord::Schema.define(version: 2020_01_19_112504) do
     t.index ["uri"], name: "index_tombstones_on_uri"
   end
 
-  create_table "user_invite_requests", force: :cascade do |t|
+  create_table "user_invite_requests", id: :bigint, default: -> { "timestamp_id('user_invite_requests'::text)" }, force: :cascade do |t|
     t.bigint "user_id"
     t.text "text"
     t.datetime "created_at", null: false
