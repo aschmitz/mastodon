@@ -15,6 +15,8 @@ import { countableText } from 'flavours/glitch/util/counter';
 import OptionsContainer from '../containers/options_container';
 import Publisher from './publisher';
 import TextareaIcons from './textarea_icons';
+import { maxChars } from 'flavours/glitch/util/initial_state';
+import CharacterCounter from './character_counter';
 
 const messages = defineMessages({
   placeholder: { id: 'compose_form.placeholder', defaultMessage: 'What is on your mind?' },
@@ -55,6 +57,7 @@ class ComposeForm extends ImmutablePureComponent {
     onPickEmoji: PropTypes.func,
     showSearch: PropTypes.bool,
     anyMedia: PropTypes.bool,
+    singleColumn: PropTypes.bool,
 
     advancedOptions: ImmutablePropTypes.map,
     layout: PropTypes.string,
@@ -66,8 +69,6 @@ class ComposeForm extends ImmutablePureComponent {
     preselectOnReply: PropTypes.bool,
     onChangeSpoilerness: PropTypes.func,
     onChangeVisibility: PropTypes.func,
-    onMount: PropTypes.func,
-    onUnmount: PropTypes.func,
     onPaste: PropTypes.func,
     onMediaDescriptionConfirm: PropTypes.func,
   };
@@ -120,14 +121,8 @@ class ComposeForm extends ImmutablePureComponent {
 
     // Submit unless there are media with missing descriptions
     if (mediaDescriptionConfirmation && onMediaDescriptionConfirm && media && media.some(item => !item.get('description'))) {
-      const firstWithoutDescription = media.findIndex(item => !item.get('description'));
-      if (uploadForm) {
-        const inputs = uploadForm.querySelectorAll('.composer--upload_form--item input');
-        if (inputs.length == media.size && firstWithoutDescription !== -1) {
-          inputs[firstWithoutDescription].focus();
-        }
-      }
-      onMediaDescriptionConfirm(this.context.router ? this.context.router.history : null);
+      const firstWithoutDescription = media.find(item => !item.get('description'));
+      onMediaDescriptionConfirm(this.context.router ? this.context.router.history : null, firstWithoutDescription.get('id'));
     } else if (onSubmit) {
       onSubmit(this.context.router ? this.context.router.history : null);
     }
@@ -196,25 +191,12 @@ class ComposeForm extends ImmutablePureComponent {
     }
   }
 
-  //  Tells our state the composer has been mounted.
-  componentDidMount () {
-    const { onMount } = this.props;
-    if (onMount) {
-      onMount();
-    }
-  }
-
-  //  Tells our state the composer has been unmounted.
-  componentWillUnmount () {
-    const { onUnmount } = this.props;
-    if (onUnmount) {
-      onUnmount();
-    }
-  }
-
   handleFocus = () => {
-    if (this.composeForm) {
-      this.composeForm.scrollIntoView();
+    if (this.composeForm && !this.props.singleColumn) {
+      const { left, right } = this.composeForm.getBoundingClientRect();
+      if (left < 0 || right > (window.innerWidth || document.documentElement.clientWidth)) {
+        this.composeForm.scrollIntoView();
+      }
     }
   }
 
@@ -237,6 +219,7 @@ class ComposeForm extends ImmutablePureComponent {
       preselectDate,
       text,
       preselectOnReply,
+      singleColumn,
     } = this.props;
     let selectionEnd, selectionStart;
 
@@ -256,7 +239,7 @@ class ComposeForm extends ImmutablePureComponent {
       if (textarea) {
         textarea.setSelectionRange(selectionStart, selectionEnd);
         textarea.focus();
-        textarea.scrollIntoView();
+        if (!singleColumn) textarea.scrollIntoView();
       }
 
     //  Refocuses the textarea after submitting.
@@ -311,13 +294,15 @@ class ComposeForm extends ImmutablePureComponent {
 
     let disabledButton = isSubmitting || isUploading || isChangingUpload || (!text.trim().length && !anyMedia);
 
+    const countText = `${spoilerText}${countableText(text)}${advancedOptions && advancedOptions.get('do_not_federate') ? ' 👁️' : ''}`;
+
     return (
-      <div className='composer' ref={this.setRef}>
+      <div className='composer'>
         <WarningContainer />
 
         <ReplyIndicatorContainer />
 
-        <div className={`composer--spoiler ${spoiler ? 'composer--spoiler--visible' : ''}`}>
+        <div className={`composer--spoiler ${spoiler ? 'composer--spoiler--visible' : ''}`} ref={this.setRef}>
           <AutosuggestInput
             placeholder={intl.formatMessage(messages.spoiler_placeholder)}
             value={spoilerText}
@@ -360,19 +345,24 @@ class ComposeForm extends ImmutablePureComponent {
           </div>
         </AutosuggestTextarea>
 
-        <OptionsContainer
-          advancedOptions={advancedOptions}
-          disabled={isSubmitting}
-          onChangeVisibility={onChangeVisibility}
-          onToggleSpoiler={spoilersAlwaysOn ? null : onChangeSpoilerness}
-          onUpload={onPaste}
-          privacy={privacy}
-          sensitive={sensitive || (spoilersAlwaysOn && spoilerText && spoilerText.length > 0)}
-          spoiler={spoilersAlwaysOn ? (spoilerText && spoilerText.length > 0) : spoiler}
-        />
+        <div className='composer--options-wrapper'>
+          <OptionsContainer
+            advancedOptions={advancedOptions}
+            disabled={isSubmitting}
+            onChangeVisibility={onChangeVisibility}
+            onToggleSpoiler={spoilersAlwaysOn ? null : onChangeSpoilerness}
+            onUpload={onPaste}
+            privacy={privacy}
+            sensitive={sensitive || (spoilersAlwaysOn && spoilerText && spoilerText.length > 0)}
+            spoiler={spoilersAlwaysOn ? (spoilerText && spoilerText.length > 0) : spoiler}
+          />
+          <div className='compose--counter-wrapper'>
+            <CharacterCounter text={countText} max={maxChars} />
+          </div>
+        </div>
 
         <Publisher
-          countText={`${spoilerText}${countableText(text)}${advancedOptions && advancedOptions.get('do_not_federate') ? ' 👁️' : ''}`}
+          countText={countText}
           disabled={disabledButton}
           onSecondarySubmit={handleSecondarySubmit}
           onSubmit={handleSubmit}

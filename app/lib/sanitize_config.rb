@@ -2,7 +2,7 @@
 
 class Sanitize
   module Config
-    HTTP_PROTOCOLS ||= ['http', 'https', 'dat', 'dweb', 'ipfs', 'ipns', 'ssb', 'gopher', :relative].freeze
+    HTTP_PROTOCOLS ||= ['http', 'https', 'dat', 'dweb', 'ipfs', 'ipns', 'ssb', 'gopher', 'xmpp', 'magnet', :relative].freeze
 
     CLASS_WHITELIST_TRANSFORMER = lambda do |env|
       node = env[:node]
@@ -39,7 +39,7 @@ class Sanitize
     end
 
     MASTODON_STRICT ||= freeze_config(
-      elements: %w(p br span a abbr del pre blockquote code b strong u sub i em h1 h2 h3 h4 h5 ul ol li),
+      elements: %w(p br span a abbr del pre blockquote code b strong u sub sup i em h1 h2 h3 h4 h5 ul ol li),
 
       attributes: {
         'a'          => %w(href rel class title),
@@ -50,7 +50,7 @@ class Sanitize
 
       add_attributes: {
         'a' => {
-          'rel' => 'nofollow noopener tag',
+          'rel' => 'nofollow noopener tag noreferrer',
           'target' => '_blank',
         },
       },

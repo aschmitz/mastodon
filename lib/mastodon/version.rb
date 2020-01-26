@@ -5,31 +5,27 @@ module Mastodon
     module_function
 
     def major
-      2
+      3
     end
 
     def minor
-      9
+      1
     end
 
     def patch
       0
     end
 
-    def pre
-      nil
-    end
-
     def flags
-      ''
-    end
-
-    def to_a
-      [major, minor, patch, pre].compact
+      'rc1'
     end
 
     def suffix
       '+glitch'
+    end
+
+    def to_a
+      [major, minor, patch].compact
     end
 
     def to_s

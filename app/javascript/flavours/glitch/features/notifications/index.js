@@ -1,5 +1,6 @@
 import React from 'react';
 import { connect } from 'react-redux';
+import classNames from 'classnames';
 import PropTypes from 'prop-types';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import Column from 'flavours/glitch/components/column';
@@ -10,6 +11,7 @@ import {
   scrollTopNotifications,
   mountNotifications,
   unmountNotifications,
+  loadPending,
 } from 'flavours/glitch/actions/notifications';
 import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
 import NotificationContainer from './containers/notification_container';
@@ -21,9 +23,13 @@ import { List as ImmutableList } from 'immutable';
 import { debounce } from 'lodash';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import LoadGap from 'flavours/glitch/components/load_gap';
+import Icon from 'flavours/glitch/components/icon';
+
+import NotificationPurgeButtonsContainer from 'flavours/glitch/containers/notification_purge_buttons_container';
 
 const messages = defineMessages({
   title: { id: 'column.notifications', defaultMessage: 'Notifications' },
+  enterNotifCleaning : { id: 'notification_purge.start', defaultMessage: 'Enter notification cleaning mode' },
 });
 
 const getNotifications = createSelector([
@@ -46,8 +52,9 @@ const mapStateToProps = state => ({
   notifications: getNotifications(state),
   localSettings:  state.get('local_settings'),
   isLoading: state.getIn(['notifications', 'isLoading'], true),
-  isUnread: state.getIn(['notifications', 'unread']) > 0,
+  isUnread: state.getIn(['notifications', 'unread']) > 0 || state.getIn(['notifications', 'pendingItems']).size > 0,
   hasMore: state.getIn(['notifications', 'hasMore']),
+  numPending: state.getIn(['notifications', 'pendingItems'], ImmutableList()).size,
   notifCleaningActive: state.getIn(['notifications', 'cleaningMode']),
 });
 
@@ -65,9 +72,9 @@ const mapDispatchToProps = dispatch => ({
   dispatch,
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+export default @connect(mapStateToProps, mapDispatchToProps)
 @injectIntl
-export default class Notifications extends React.PureComponent {
+class Notifications extends React.PureComponent {
 
   static propTypes = {
     columnId: PropTypes.string,
@@ -80,6 +87,7 @@ export default class Notifications extends React.PureComponent {
     isUnread: PropTypes.bool,
     multiColumn: PropTypes.bool,
     hasMore: PropTypes.bool,
+    numPending: PropTypes.number,
     localSettings: ImmutablePropTypes.map,
     notifCleaningActive: PropTypes.bool,
     onEnterCleaningMode: PropTypes.func,
@@ -91,6 +99,10 @@ export default class Notifications extends React.PureComponent {
     trackScroll: true,
   };
 
+  state = {
+    animatingNCD: false,
+  };
+
   handleLoadGap = (maxId) => {
     this.props.dispatch(expandNotifications({ maxId }));
   };
@@ -99,6 +111,10 @@ export default class Notifications extends React.PureComponent {
     const last = this.props.notifications.last();
     this.props.dispatch(expandNotifications({ maxId: last && last.get('id') }));
   }, 300, { leading: true });
+
+  handleLoadPending = () => {
+    this.props.dispatch(loadPending());
+  };
 
   handleScrollToTop = debounce(() => {
     this.props.dispatch(scrollTopNotifications(true));
@@ -169,8 +185,19 @@ export default class Notifications extends React.PureComponent {
     }
   }
 
+  handleTransitionEndNCD = () => {
+    this.setState({ animatingNCD: false });
+  }
+
+  onEnterCleaningMode = () => {
+    this.setState({ animatingNCD: true });
+    this.props.onEnterCleaningMode(!this.props.notifCleaningActive);
+  }
+
   render () {
-    const { intl, notifications, shouldUpdateScroll, isLoading, isUnread, columnId, multiColumn, hasMore, showFilterBar } = this.props;
+    const { intl, notifications, shouldUpdateScroll, isLoading, isUnread, columnId, multiColumn, hasMore, numPending, showFilterBar } = this.props;
+    const { notifCleaning, notifCleaningActive } = this.props;
+    const { animatingNCD } = this.state;
     const pinned = !!columnId;
     const emptyMessage = <FormattedMessage id='empty_column.notifications' defaultMessage="You don't have any notifications yet. Interact with others to start the conversation." />;
 
@@ -212,18 +239,52 @@ export default class Notifications extends React.PureComponent {
         isLoading={isLoading}
         showLoading={isLoading && notifications.size === 0}
         hasMore={hasMore}
+        numPending={numPending}
         emptyMessage={emptyMessage}
         onLoadMore={this.handleLoadOlder}
+        onLoadPending={this.handleLoadPending}
         onScrollToTop={this.handleScrollToTop}
         onScroll={this.handleScroll}
         shouldUpdateScroll={shouldUpdateScroll}
+        bindToDocument={!multiColumn}
       >
         {scrollableContent}
       </ScrollableList>
     );
 
+    const notifCleaningButtonClassName = classNames('column-header__button', {
+      'active': notifCleaningActive,
+    });
+
+    const notifCleaningDrawerClassName = classNames('ncd column-header__collapsible', {
+      'collapsed': !notifCleaningActive,
+      'animating': animatingNCD,
+    });
+
+    const msgEnterNotifCleaning = intl.formatMessage(messages.enterNotifCleaning);
+
+    const notifCleaningButton = (
+      <button
+        aria-label={msgEnterNotifCleaning}
+        title={msgEnterNotifCleaning}
+        onClick={this.onEnterCleaningMode}
+        className={notifCleaningButtonClassName}
+      >
+        <Icon id='eraser' />
+      </button>
+    );
+
+    const notifCleaningDrawer = (
+      <div className={notifCleaningDrawerClassName} onTransitionEnd={this.handleTransitionEndNCD}>
+        <div className='column-header__collapsible-inner nopad-drawer'>
+          {(notifCleaningActive || animatingNCD) ? (<NotificationPurgeButtonsContainer />) : null }
+        </div>
+      </div>
+    );
+
     return (
       <Column
+        bindToDocument={!multiColumn}
         ref={this.setColumnRef}
         name='notifications'
         extraClasses={this.props.notifCleaningActive ? 'notif-cleaning' : null}
@@ -239,9 +300,8 @@ export default class Notifications extends React.PureComponent {
           pinned={pinned}
           multiColumn={multiColumn}
           localSettings={this.props.localSettings}
-          notifCleaning
-          notifCleaningActive={this.props.notifCleaningActive} // this is used to toggle the header text
-          onEnterCleaningMode={this.props.onEnterCleaningMode}
+          extraButton={notifCleaningButton}
+          appendContent={notifCleaningDrawer}
         >
           <ColumnSettingsContainer />
         </ColumnHeader>

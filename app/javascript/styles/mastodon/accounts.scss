@@ -129,7 +129,6 @@
 
   .older,
   .newer {
-    text-transform: uppercase;
     color: $secondary-text-color;
   }
 
@@ -224,6 +223,7 @@
 }
 
 .account__header__fields {
+  max-width: 100vw;
   padding: 0;
   margin: 15px -15px -15px;
   border: 0 none;

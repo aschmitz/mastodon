@@ -73,7 +73,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def uri
-    OStatus::TagManager.instance.uri_for(object)
+    ActivityPub::TagManager.instance.uri_for(object)
   end
 
   def content
@@ -81,7 +81,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def url
-    TagManager.instance.url_for(object)
+    ActivityPub::TagManager.instance.url_for(object)
   end
 
   def favourited
@@ -109,8 +109,8 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def bookmarked
-    if instance_options && instance_options[:bookmarks]
-      instance_options[:bookmarks].bookmarks_map[object.id] || false
+    if instance_options && instance_options[:relationships]
+      instance_options[:relationships].bookmarks_map[object.id] || false
     else
       current_user.account.bookmarked?(object)
     end
@@ -155,7 +155,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
     end
 
     def url
-      TagManager.instance.url_for(object.account)
+      ActivityPub::TagManager.instance.url_for(object.account)
     end
 
     def acct
