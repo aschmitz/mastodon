@@ -17,7 +17,7 @@
   }
 
   a {
-    color: $highlight-text-color;
+    color: $secondary-text-color;
     text-decoration: none;
 
     &:hover {
@@ -32,6 +32,10 @@
           text-decoration: underline;
         }
       }
+    }
+
+    &.unhandled-link {
+      color: lighten($ui-highlight-color, 8%);
     }
   }
 }
@@ -76,6 +80,17 @@
       display: block;
       font-weight: 500;
       margin-bottom: 10px;
+    }
+
+    &__unread {
+      position: absolute;
+      top: 19px;
+      right: 19px;
+      display: block;
+      background: $highlight-text-color;
+      border-radius: 50%;
+      width: 0.625rem;
+      height: 0.625rem;
     }
   }
 
