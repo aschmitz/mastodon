@@ -8,6 +8,7 @@ import IconButton from './icon_button';
 import { defineMessages, injectIntl } from 'react-intl';
 import ImmutablePureComponent from 'react-immutable-pure-component';
 import { me } from 'flavours/glitch/util/initial_state';
+import RelativeTimestamp from './relative_timestamp';
 
 const messages = defineMessages({
   follow: { id: 'account.follow', defaultMessage: 'Follow' },
@@ -86,8 +87,10 @@ class Account extends ImmutablePureComponent {
 
     let buttons;
 
-    if (onActionClick && actionIcon) {
-      buttons = <IconButton icon={actionIcon} title={actionTitle} onClick={this.handleAction} />;
+    if (onActionClick) {
+      if (actionIcon) {
+        buttons = <IconButton icon={actionIcon} title={actionTitle} onClick={this.handleAction} />;
+      }
     } else if (account.get('id') !== me && !small && account.get('relationship', null) !== null) {
       const following = account.getIn(['relationship', 'following']);
       const requested = account.getIn(['relationship', 'requested']);
@@ -116,6 +119,11 @@ class Account extends ImmutablePureComponent {
       }
     }
 
+    let mute_expires_at;
+    if (account.get('mute_expires_at')) {
+      mute_expires_at =  <div><RelativeTimestamp timestamp={account.get('mute_expires_at')} futureDate /></div>;
+    }
+
     return small ? (
       <Permalink
         className='account small'
@@ -138,6 +146,7 @@ class Account extends ImmutablePureComponent {
         <div className='account__wrapper'>
           <Permalink key={account.get('id')} className='account__display-name' href={account.get('url')} to={`/accounts/${account.get('id')}`}>
             <div className='account__avatar-wrapper'><Avatar account={account} size={36} /></div>
+            {mute_expires_at}
             <DisplayName account={account} />
           </Permalink>
           {buttons ?

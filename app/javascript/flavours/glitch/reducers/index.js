@@ -18,6 +18,7 @@ import status_lists from './status_lists';
 import mutes from './mutes';
 import blocks from './blocks';
 import reports from './reports';
+import boosts from './boosts';
 import contexts from './contexts';
 import compose from './compose';
 import search from './search';
@@ -36,6 +37,9 @@ import polls from './polls';
 import identity_proofs from './identity_proofs';
 import trends from './trends';
 import announcements from './announcements';
+import markers from './markers';
+import account_notes from './account_notes';
+import picture_in_picture from './picture_in_picture';
 
 const reducers = {
   announcements,
@@ -58,6 +62,7 @@ const reducers = {
   mutes,
   blocks,
   reports,
+  boosts,
   contexts,
   compose,
   search,
@@ -75,6 +80,9 @@ const reducers = {
   pinnedAccountsEditor,
   polls,
   trends,
+  markers,
+  account_notes,
+  picture_in_picture,
 };
 
 export default combineReducers(reducers);

@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { autoUnfoldCW } from 'flavours/glitch/util/content_warning';
 import PollContainer from 'flavours/glitch/containers/poll_container';
 import { displayMedia } from 'flavours/glitch/util/initial_state';
+import PictureInPicturePlaceholder from 'flavours/glitch/components/picture_in_picture_placeholder';
 
 // We use the component (and not the container) since we do not want
 // to use the progress bar to show download progress
@@ -96,6 +97,9 @@ class Status extends ImmutablePureComponent {
     cacheMediaWidth: PropTypes.func,
     cachedMediaWidth: PropTypes.number,
     onClick: PropTypes.func,
+    scrollKey: PropTypes.string,
+    deployPictureInPicture: PropTypes.func,
+    usingPiP: PropTypes.bool,
   };
 
   state = {
@@ -121,6 +125,8 @@ class Status extends ImmutablePureComponent {
     'notification',
     'hidden',
     'expanded',
+    'unread',
+    'usingPiP',
   ]
 
   updateOnStates = [
@@ -372,24 +378,34 @@ class Status extends ImmutablePureComponent {
     }
   };
 
-  handleOpenVideo = (media, startTime) => {
-    this.props.onOpenVideo(media, startTime);
+  handleOpenVideo = (options) => {
+    const { status } = this.props;
+    this.props.onOpenVideo(status.get('id'), status.getIn(['media_attachments', 0]), options);
+  }
+
+  handleOpenMedia = (media, index) => {
+    this.props.onOpenMedia(this.props.status.get('id'), media, index);
   }
 
   handleHotkeyOpenMedia = e => {
     const { status, onOpenMedia, onOpenVideo } = this.props;
+    const statusId = status.get('id');
 
     e.preventDefault();
 
     if (status.get('media_attachments').size > 0) {
-      if (status.getIn(['media_attachments', 0, 'type']) === 'audio') {
-        // TODO: toggle play/paused?
-      } else if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
-        onOpenVideo(status.getIn(['media_attachments', 0]), 0);
+      if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
+        onOpenVideo(statusId, status.getIn(['media_attachments', 0]), { startTime: 0 });
       } else {
-        onOpenMedia(status.get('media_attachments'), 0);
+        onOpenMedia(statusId, status.get('media_attachments'), 0);
       }
     }
+  }
+
+  handleDeployPictureInPicture = (type, mediaProps) => {
+    const { deployPictureInPicture, status } = this.props;
+
+    deployPictureInPicture(status, type, mediaProps);
   }
 
   handleHotkeyReply = e => {
@@ -494,6 +510,7 @@ class Status extends ImmutablePureComponent {
       hidden,
       unread,
       featured,
+      usingPiP,
       ...other
     } = this.props;
     const { isExpanded, isCollapsed, forceFilter } = this.state;
@@ -526,9 +543,8 @@ class Status extends ImmutablePureComponent {
       return (
         <HotKeys handlers={handlers}>
           <div ref={this.handleRef} className='status focusable' tabIndex='0'>
-            {status.getIn(['account', 'display_name']) || status.getIn(['account', 'username'])}
-            {' '}
-            {status.get('content')}
+            <span>{status.getIn(['account', 'display_name']) || status.getIn(['account', 'username'])}</span>
+            <span>{status.get('content')}</span>
           </div>
         </HotKeys>
       );
@@ -574,6 +590,9 @@ class Status extends ImmutablePureComponent {
     if (status.get('poll')) {
       media = <PollContainer pollId={status.get('poll')} />;
       mediaIcon = 'tasks';
+    } else if (usingPiP) {
+      media = <PictureInPicturePlaceholder width={this.props.cachedMediaWidth} />;
+      mediaIcon = 'video-camera';
     } else if (attachments.size > 0) {
       if (muted || attachments.some(item => item.get('type') === 'unknown')) {
         media = (
@@ -591,9 +610,15 @@ class Status extends ImmutablePureComponent {
               <Component
                 src={attachment.get('url')}
                 alt={attachment.get('description')}
+                poster={attachment.get('preview_url') || status.getIn(['account', 'avatar_static'])}
+                backgroundColor={attachment.getIn(['meta', 'colors', 'background'])}
+                foregroundColor={attachment.getIn(['meta', 'colors', 'foreground'])}
+                accentColor={attachment.getIn(['meta', 'colors', 'accent'])}
                 duration={attachment.getIn(['meta', 'original', 'duration'], 0)}
-                peaks={[0]}
-                height={70}
+                width={this.props.cachedMediaWidth}
+                height={110}
+                cacheWidth={this.props.cacheMediaWidth}
+                deployPictureInPicture={this.handleDeployPictureInPicture}
               />
             )}
           </Bundle>
@@ -606,6 +631,7 @@ class Status extends ImmutablePureComponent {
           <Bundle fetchComponent={Video} loading={this.renderLoadingVideoPlayer} >
             {Component => (<Component
               preview={attachment.get('preview_url')}
+              frameRate={attachment.getIn(['meta', 'original', 'frame_rate'])}
               blurhash={attachment.get('blurhash')}
               src={attachment.get('url')}
               alt={attachment.get('description')}
@@ -617,6 +643,7 @@ class Status extends ImmutablePureComponent {
               onOpenVideo={this.handleOpenVideo}
               width={this.props.cachedMediaWidth}
               cacheWidth={this.props.cacheMediaWidth}
+              deployPictureInPicture={this.handleDeployPictureInPicture}
               visible={this.state.showMedia}
               onToggleVisibility={this.handleToggleMediaVisibility}
             />)}
@@ -633,7 +660,7 @@ class Status extends ImmutablePureComponent {
                 letterbox={settings.getIn(['media', 'letterbox'])}
                 fullwidth={settings.getIn(['media', 'fullwidth'])}
                 hidden={isCollapsed || !isExpanded}
-                onOpenMedia={this.props.onOpenMedia}
+                onOpenMedia={this.handleOpenMedia}
                 cacheWidth={this.props.cacheMediaWidth}
                 defaultWidth={this.props.cachedMediaWidth}
                 visible={this.state.showMedia}
@@ -651,11 +678,12 @@ class Status extends ImmutablePureComponent {
     } else if (status.get('card') && settings.get('inline_preview_cards')) {
       media = (
         <Card
-          onOpenMedia={this.props.onOpenMedia}
+          onOpenMedia={this.handleOpenMedia}
           card={status.get('card')}
           compact
           cacheWidth={this.props.cacheMediaWidth}
           defaultWidth={this.props.cachedMediaWidth}
+          sensitive={status.get('sensitive')}
         />
       );
       mediaIcon = 'link';
@@ -672,6 +700,7 @@ class Status extends ImmutablePureComponent {
         favourite: 'favourited',
         reblog: 'boosted',
         reblogged_by: 'boosted',
+        status: 'posted',
       }[prepend];
 
       selectorAttribs[`data-${notifKind}-by`] = `@${account.get('acct')}`;
@@ -687,7 +716,7 @@ class Status extends ImmutablePureComponent {
       collapsed: isCollapsed,
       'has-background': isCollapsed && background,
       'status__wrapper-reply': !!status.get('in_reply_to_id'),
-      read: unread === false,
+      unread,
       muted,
     }, 'focusable');
 

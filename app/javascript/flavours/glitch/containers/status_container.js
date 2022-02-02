@@ -21,7 +21,9 @@ import { muteStatus, unmuteStatus, deleteStatus } from 'flavours/glitch/actions/
 import { initMuteModal } from 'flavours/glitch/actions/mutes';
 import { initBlockModal } from 'flavours/glitch/actions/blocks';
 import { initReport } from 'flavours/glitch/actions/reports';
+import { initBoostModal } from 'flavours/glitch/actions/boosts';
 import { openModal } from 'flavours/glitch/actions/modal';
+import { deployPictureInPicture } from 'flavours/glitch/actions/picture_in_picture';
 import { changeLocalSetting } from 'flavours/glitch/actions/local_settings';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import { boostModal, favouriteModal, deleteModal } from 'flavours/glitch/util/initial_state';
@@ -54,7 +56,7 @@ const makeMapStateToProps = () => {
     let account = undefined;
     let prepend = undefined;
 
-    if (props.featured) {
+    if (props.featured && status) {
       account = status.get('account');
       prepend = 'featured';
     } else if (reblogStatus !== null && typeof reblogStatus === 'object') {
@@ -69,6 +71,7 @@ const makeMapStateToProps = () => {
       account     : account || props.account,
       settings    : state.get('local_settings'),
       prepend     : prepend || props.prepend,
+      usingPiP    : state.get('picture_in_picture').statusId === props.id,
     };
   };
 
@@ -94,11 +97,11 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     });
   },
 
-  onModalReblog (status) {
+  onModalReblog (status, privacy) {
     if (status.get('reblogged')) {
       dispatch(unreblog(status));
     } else {
-      dispatch(reblog(status));
+      dispatch(reblog(status, privacy));
     }
   },
 
@@ -106,11 +109,11 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     dispatch((_, getState) => {
       let state = getState();
       if (state.getIn(['local_settings', 'confirm_boost_missing_media_description']) && status.get('media_attachments').some(item => !item.get('description')) && !status.get('reblogged')) {
-        dispatch(openModal('BOOST', { status, onReblog: this.onModalReblog, missingMediaDescription: true }));
+        dispatch(initBoostModal({ status, onReblog: this.onModalReblog, missingMediaDescription: true }));
       } else if (e.shiftKey || !boostModal) {
         this.onModalReblog(status);
       } else {
-        dispatch(openModal('BOOST', { status, onReblog: this.onModalReblog }));
+        dispatch(initBoostModal({ status, onReblog: this.onModalReblog }));
       }
     });
   },
@@ -174,12 +177,12 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     dispatch(mentionCompose(account, router));
   },
 
-  onOpenMedia (media, index) {
-    dispatch(openModal('MEDIA', { media, index }));
+  onOpenMedia (statusId, media, index) {
+    dispatch(openModal('MEDIA', { statusId, media, index }));
   },
 
-  onOpenVideo (media, time) {
-    dispatch(openModal('VIDEO', { media, time }));
+  onOpenVideo (statusId, media, options) {
+    dispatch(openModal('VIDEO', { statusId, media, options }));
   },
 
   onBlock (status) {
@@ -243,6 +246,14 @@ const mapDispatchToProps = (dispatch, { intl, contextType }) => ({
     } else {
       dispatch(muteStatus(status.get('id')));
     }
+  },
+
+  deployPictureInPicture (status, type, mediaProps) {
+    dispatch((_, getState) => {
+      if (getState().getIn(['local_settings', 'media', 'pop_in_player'])) {
+        dispatch(deployPictureInPicture(status.get('id'), status.getIn(['account', 'id']), type, mediaProps));
+      }
+    });
   },
 
 });

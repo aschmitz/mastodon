@@ -7,11 +7,12 @@ import { autoPlayGif, me, isStaff } from 'flavours/glitch/util/initial_state';
 import { preferencesLink, profileLink, accountAdminLink } from 'flavours/glitch/util/backend_links';
 import classNames from 'classnames';
 import Icon from 'flavours/glitch/components/icon';
+import IconButton from 'flavours/glitch/components/icon_button';
 import Avatar from 'flavours/glitch/components/avatar';
 import Button from 'flavours/glitch/components/button';
-import { shortNumberFormat } from 'flavours/glitch/util/numbers';
 import { NavLink } from 'react-router-dom';
 import DropdownMenuContainer from 'flavours/glitch/containers/dropdown_menu_container';
+import AccountNoteContainer from '../containers/account_note_container';
 
 const messages = defineMessages({
   unfollow: { id: 'account.unfollow', defaultMessage: 'Unfollow' },
@@ -30,22 +31,25 @@ const messages = defineMessages({
   report: { id: 'account.report', defaultMessage: 'Report @{name}' },
   share: { id: 'account.share', defaultMessage: 'Share @{name}\'s profile' },
   media: { id: 'account.media', defaultMessage: 'Media' },
-  blockDomain: { id: 'account.block_domain', defaultMessage: 'Hide everything from {domain}' },
-  unblockDomain: { id: 'account.unblock_domain', defaultMessage: 'Unhide {domain}' },
+  blockDomain: { id: 'account.block_domain', defaultMessage: 'Block domain {domain}' },
+  unblockDomain: { id: 'account.unblock_domain', defaultMessage: 'Unblock domain {domain}' },
   hideReblogs: { id: 'account.hide_reblogs', defaultMessage: 'Hide boosts from @{name}' },
   showReblogs: { id: 'account.show_reblogs', defaultMessage: 'Show boosts from @{name}' },
+  enableNotifications: { id: 'account.enable_notifications', defaultMessage: 'Notify me when @{name} posts' },
+  disableNotifications: { id: 'account.disable_notifications', defaultMessage: 'Stop notifying me when @{name} posts' },
   pins: { id: 'navigation_bar.pins', defaultMessage: 'Pinned toots' },
   preferences: { id: 'navigation_bar.preferences', defaultMessage: 'Preferences' },
   follow_requests: { id: 'navigation_bar.follow_requests', defaultMessage: 'Follow requests' },
   favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favourites' },
   lists: { id: 'navigation_bar.lists', defaultMessage: 'Lists' },
   blocks: { id: 'navigation_bar.blocks', defaultMessage: 'Blocked users' },
-  domain_blocks: { id: 'navigation_bar.domain_blocks', defaultMessage: 'Hidden domains' },
+  domain_blocks: { id: 'navigation_bar.domain_blocks', defaultMessage: 'Blocked domains' },
   mutes: { id: 'navigation_bar.mutes', defaultMessage: 'Muted users' },
   endorse: { id: 'account.endorse', defaultMessage: 'Feature on profile' },
   unendorse: { id: 'account.unendorse', defaultMessage: 'Don\'t feature on profile' },
   add_or_remove_from_list: { id: 'account.add_or_remove_from_list', defaultMessage: 'Add or Remove from lists' },
   admin_account: { id: 'status.admin_account', defaultMessage: 'Open moderation interface for @{name}' },
+  add_account_note: { id: 'account.add_account_note', defaultMessage: 'Add note for @{name}' },
 });
 
 const dateFormatOptions = {
@@ -65,6 +69,17 @@ class Header extends ImmutablePureComponent {
     identity_props: ImmutablePropTypes.list,
     onFollow: PropTypes.func.isRequired,
     onBlock: PropTypes.func.isRequired,
+    onMention: PropTypes.func.isRequired,
+    onDirect: PropTypes.func.isRequired,
+    onReblogToggle: PropTypes.func.isRequired,
+    onNotifyToggle: PropTypes.func.isRequired,
+    onReport: PropTypes.func.isRequired,
+    onMute: PropTypes.func.isRequired,
+    onBlockDomain: PropTypes.func.isRequired,
+    onUnblockDomain: PropTypes.func.isRequired,
+    onEndorseToggle: PropTypes.func.isRequired,
+    onAddToList: PropTypes.func.isRequired,
+    onEditAccountNote: PropTypes.func.isRequired,
     intl: PropTypes.object.isRequired,
     domain: PropTypes.string.isRequired,
   };
@@ -73,45 +88,30 @@ class Header extends ImmutablePureComponent {
     window.open(profileLink, '_blank');
   }
 
-  _updateEmojis () {
-    const node = this.node;
-
-    if (!node || autoPlayGif) {
+  handleMouseEnter = ({ currentTarget }) => {
+    if (autoPlayGif) {
       return;
     }
 
-    const emojis = node.querySelectorAll('.custom-emoji');
+    const emojis = currentTarget.querySelectorAll('.custom-emoji');
 
     for (var i = 0; i < emojis.length; i++) {
       let emoji = emojis[i];
-      if (emoji.classList.contains('status-emoji')) {
-        continue;
-      }
-      emoji.classList.add('status-emoji');
-
-      emoji.addEventListener('mouseenter', this.handleEmojiMouseEnter, false);
-      emoji.addEventListener('mouseleave', this.handleEmojiMouseLeave, false);
+      emoji.src = emoji.getAttribute('data-original');
     }
   }
 
-  componentDidMount () {
-    this._updateEmojis();
-  }
+  handleMouseLeave = ({ currentTarget }) => {
+    if (autoPlayGif) {
+      return;
+    }
 
-  componentDidUpdate () {
-    this._updateEmojis();
-  }
+    const emojis = currentTarget.querySelectorAll('.custom-emoji');
 
-  handleEmojiMouseEnter = ({ target }) => {
-    target.src = target.getAttribute('data-original');
-  }
-
-  handleEmojiMouseLeave = ({ target }) => {
-    target.src = target.getAttribute('data-static');
-  }
-
-  setRef = (c) => {
-    this.node = c;
+    for (var i = 0; i < emojis.length; i++) {
+      let emoji = emojis[i];
+      emoji.src = emoji.getAttribute('data-static');
+    }
   }
 
   render () {
@@ -121,8 +121,13 @@ class Header extends ImmutablePureComponent {
       return null;
     }
 
+    const accountNote = account.getIn(['relationship', 'note']);
+
+    const suspended = account.get('suspended');
+
     let info        = [];
     let actionBtn   = '';
+    let bellBtn     = '';
     let lockedIcon  = '';
     let menu        = [];
 
@@ -136,16 +141,20 @@ class Header extends ImmutablePureComponent {
     if (me !== account.get('id') && account.getIn(['relationship', 'muting'])) {
       info.push(<span className='relationship-tag'><FormattedMessage id='account.muted' defaultMessage='Muted' /></span>);
     } else if (me !== account.get('id') && account.getIn(['relationship', 'domain_blocking'])) {
-      info.push(<span className='relationship-tag'><FormattedMessage id='account.domain_blocked' defaultMessage='Domain hidden' /></span>);
+      info.push(<span className='relationship-tag'><FormattedMessage id='account.domain_blocked' defaultMessage='Domain blocked' /></span>);
+    }
+
+    if (account.getIn(['relationship', 'requested']) || account.getIn(['relationship', 'following'])) {
+      bellBtn = <IconButton icon='bell-o' size={24} active={account.getIn(['relationship', 'notifying'])} title={intl.formatMessage(account.getIn(['relationship', 'notifying']) ? messages.disableNotifications : messages.enableNotifications, { name: account.get('username') })} onClick={this.props.onNotifyToggle} />;
     }
 
     if (me !== account.get('id')) {
       if (!account.get('relationship')) { // Wait until the relationship is loaded
         actionBtn = '';
       } else if (account.getIn(['relationship', 'requested'])) {
-        actionBtn = <Button className='logo-button' text={intl.formatMessage(messages.cancel_follow_request)} title={intl.formatMessage(messages.requested)} onClick={this.props.onFollow} />;
+        actionBtn = <Button className={classNames('logo-button', { 'button--with-bell': bellBtn !== '' })} text={intl.formatMessage(messages.cancel_follow_request)} title={intl.formatMessage(messages.requested)} onClick={this.props.onFollow} />;
       } else if (!account.getIn(['relationship', 'blocking'])) {
-        actionBtn = <Button className={classNames('logo-button', { 'button--destructive': account.getIn(['relationship', 'following']) })} text={intl.formatMessage(account.getIn(['relationship', 'following']) ? messages.unfollow : messages.follow)} onClick={this.props.onFollow} />;
+        actionBtn = <Button className={classNames('logo-button', { 'button--destructive': account.getIn(['relationship', 'following']), 'button--with-bell': bellBtn !== '' })} text={intl.formatMessage(account.getIn(['relationship', 'following']) ? messages.unfollow : messages.follow)} onClick={this.props.onFollow} />;
       } else if (account.getIn(['relationship', 'blocking'])) {
         actionBtn = <Button className='logo-button' text={intl.formatMessage(messages.unblock, { name: account.get('username') })} onClick={this.props.onBlock} />;
       }
@@ -157,19 +166,27 @@ class Header extends ImmutablePureComponent {
       actionBtn = '';
     }
 
+    if (suspended && !account.getIn(['relationship', 'following'])) {
+      actionBtn = '';
+    }
+
     if (account.get('locked')) {
       lockedIcon = <Icon id='lock' title={intl.formatMessage(messages.account_locked)} />;
     }
 
-    if (account.get('id') !== me) {
+    if (account.get('id') !== me && !suspended) {
       menu.push({ text: intl.formatMessage(messages.mention, { name: account.get('username') }), action: this.props.onMention });
       menu.push({ text: intl.formatMessage(messages.direct, { name: account.get('username') }), action: this.props.onDirect });
       menu.push(null);
     }
 
-    if ('share' in navigator) {
+    if ('share' in navigator && !suspended) {
       menu.push({ text: intl.formatMessage(messages.share, { name: account.get('username') }), action: this.handleShare });
       menu.push(null);
+    }
+
+    if (accountNote === null || accountNote === '') {
+      menu.push({ text: intl.formatMessage(messages.add_account_note, { name: account.get('username') }), action: this.props.onEditAccountNote });
     }
 
     if (account.get('id') === me) {
@@ -186,10 +203,12 @@ class Header extends ImmutablePureComponent {
       menu.push({ text: intl.formatMessage(messages.domain_blocks), to: '/domain_blocks' });
     } else {
       if (account.getIn(['relationship', 'following'])) {
-        if (account.getIn(['relationship', 'showing_reblogs'])) {
-          menu.push({ text: intl.formatMessage(messages.hideReblogs, { name: account.get('username') }), action: this.props.onReblogToggle });
-        } else {
-          menu.push({ text: intl.formatMessage(messages.showReblogs, { name: account.get('username') }), action: this.props.onReblogToggle });
+        if (!account.getIn(['relationship', 'muting'])) {
+          if (account.getIn(['relationship', 'showing_reblogs'])) {
+            menu.push({ text: intl.formatMessage(messages.hideReblogs, { name: account.get('username') }), action: this.props.onReblogToggle });
+          } else {
+            menu.push({ text: intl.formatMessage(messages.showReblogs, { name: account.get('username') }), action: this.props.onReblogToggle });
+          }
         }
 
         menu.push({ text: intl.formatMessage(account.getIn(['relationship', 'endorsed']) ? messages.unendorse : messages.endorse), action: this.props.onEndorseToggle });
@@ -245,7 +264,7 @@ class Header extends ImmutablePureComponent {
     }
 
     return (
-      <div className={classNames('account__header', { inactive: !!account.get('moved') })} ref={this.setRef}>
+      <div className={classNames('account__header', { inactive: !!account.get('moved') })} onMouseEnter={this.handleMouseEnter} onMouseLeave={this.handleMouseLeave}>
         <div className='account__header__image'>
           <div className='account__header__info'>
             {info}
@@ -264,6 +283,7 @@ class Header extends ImmutablePureComponent {
 
             <div className='account__header__tabs__buttons'>
               {actionBtn}
+              {bellBtn}
 
               <DropdownMenuContainer items={menu} icon='ellipsis-v' size={24} direction='right' />
             </div>
@@ -276,39 +296,45 @@ class Header extends ImmutablePureComponent {
             </h1>
           </div>
 
-          <div className='account__header__extra'>
-            <div className='account__header__bio'>
-              { (fields.size > 0 || identity_proofs.size > 0) && (
-                <div className='account__header__fields'>
-                  {identity_proofs.map((proof, i) => (
-                    <dl key={i}>
-                      <dt dangerouslySetInnerHTML={{ __html: proof.get('provider') }} />
+          <AccountNoteContainer account={account} />
 
-                      <dd className='verified'>
-                        <a href={proof.get('proof_url')} target='_blank' rel='noopener noreferrer'><span title={intl.formatMessage(messages.linkVerifiedOn, { date: intl.formatDate(proof.get('updated_at'), dateFormatOptions) })}>
-                          <Icon id='check' className='verified__mark' />
-                        </span></a>
-                        <a href={proof.get('profile_url')} target='_blank' rel='noopener noreferrer'><span dangerouslySetInnerHTML={{ __html: ' '+proof.get('provider_username') }} /></a>
-                      </dd>
-                    </dl>
-                  ))}
-                  {fields.map((pair, i) => (
-                    <dl key={i}>
-                      <dt dangerouslySetInnerHTML={{ __html: pair.get('name_emojified') }} title={pair.get('name')} />
- 
-                      <dd className={pair.get('verified_at') && 'verified'} title={pair.get('value_plain')}>
-                        {pair.get('verified_at') && <span title={intl.formatMessage(messages.linkVerifiedOn, { date: intl.formatDate(pair.get('verified_at'), dateFormatOptions) })}><Icon id='check' className='verified__mark' /></span>} <span dangerouslySetInnerHTML={{ __html: pair.get('value_emojified') }} />
-                      </dd>
-                    </dl>
-                  ))}
-                </div>
-              )}
+          {!suspended && (
+            <div className='account__header__extra'>
+              <div className='account__header__bio'>
+                { (fields.size > 0 || identity_proofs.size > 0) && (
+                  <div className='account__header__fields'>
+                    {identity_proofs.map((proof, i) => (
+                      <dl key={i}>
+                        <dt dangerouslySetInnerHTML={{ __html: proof.get('provider') }} className='translate' />
 
-              {account.get('note').length > 0 && account.get('note') !== '<p></p>' && <div className='account__header__content' dangerouslySetInnerHTML={content} />}
+                        <dd className='verified'>
+                          <a href={proof.get('proof_url')} target='_blank' rel='noopener noreferrer'><span title={intl.formatMessage(messages.linkVerifiedOn, { date: intl.formatDate(proof.get('updated_at'), dateFormatOptions) })}>
+                            <Icon id='check' className='verified__mark' />
+                          </span></a>
+                          <a href={proof.get('profile_url')} target='_blank' rel='noopener noreferrer'><span dangerouslySetInnerHTML={{ __html: ' '+proof.get('provider_username') }} className='translate' /></a>
+                        </dd>
+                      </dl>
+                    ))}
+                    {fields.map((pair, i) => (
+                      <dl key={i}>
+                        <dt dangerouslySetInnerHTML={{ __html: pair.get('name_emojified') }} title={pair.get('name')} />
+   
+                        <dd className={pair.get('verified_at') && 'verified'} title={pair.get('value_plain')}>
+                          {pair.get('verified_at') && <span title={intl.formatMessage(messages.linkVerifiedOn, { date: intl.formatDate(pair.get('verified_at'), dateFormatOptions) })}><Icon id='check' className='verified__mark' /></span>} <span dangerouslySetInnerHTML={{ __html: pair.get('value_emojified') }} className='translate' />
+                        </dd>
+                      </dl>
+                    ))}
+                  </div>
+                )}
+
+                {account.get('note').length > 0 && account.get('note') !== '<p></p>' && <div className='account__header__content translate' dangerouslySetInnerHTML={content} />}
+
+                <div className='account__header__joined'><FormattedMessage id='account.joined' defaultMessage='Joined {date}' values={{ date: intl.formatDate(account.get('created_at'), { year: 'numeric', month: 'short', day: '2-digit' }) }} /></div>
+              </div>
             </div>
-         </div>
-       </div>
-     </div>
+          )}
+        </div>
+      </div>
     );
   }
 

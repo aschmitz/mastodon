@@ -1,4 +1,5 @@
-import { start } from 'rails-ujs';
+import 'packs/public-path';
+import { start } from '@rails/ujs';
 
 start();
 

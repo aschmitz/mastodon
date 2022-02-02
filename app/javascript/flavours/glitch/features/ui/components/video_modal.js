@@ -3,9 +3,8 @@ import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
 import Video from 'flavours/glitch/features/video';
 import ImmutablePureComponent from 'react-immutable-pure-component';
-import { FormattedMessage } from 'react-intl';
-import classNames from 'classnames';
-import Icon from 'flavours/glitch/components/icon';
+import Footer from 'flavours/glitch/features/picture_in_picture/components/footer';
+import { getAverageFromBlurhash } from 'flavours/glitch/blurhash';
 
 export default class VideoModal extends ImmutablePureComponent {
 
@@ -15,40 +14,50 @@ export default class VideoModal extends ImmutablePureComponent {
 
   static propTypes = {
     media: ImmutablePropTypes.map.isRequired,
-    status: ImmutablePropTypes.map,
-    time: PropTypes.number,
+    statusId: PropTypes.string,
+    options: PropTypes.shape({
+      startTime: PropTypes.number,
+      autoPlay: PropTypes.bool,
+      defaultVolume: PropTypes.number,
+    }),
     onClose: PropTypes.func.isRequired,
+    onChangeBackgroundColor: PropTypes.func.isRequired,
   };
 
-  handleStatusClick = e => {
-    if (e.button === 0 && !(e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      this.context.router.history.push(`/statuses/${this.props.status.get('id')}`);
+  componentDidMount () {
+    const { media, onChangeBackgroundColor, onClose } = this.props;
+
+    const backgroundColor = getAverageFromBlurhash(media.get('blurhash'));
+
+    if (backgroundColor) {
+      onChangeBackgroundColor(backgroundColor);
     }
   }
 
   render () {
-    const { media, status, time, onClose } = this.props;
+    const { media, statusId, onClose } = this.props;
+    const options = this.props.options || {};
 
     return (
       <div className='modal-root__modal video-modal'>
         <div className='video-modal__container'>
           <Video
             preview={media.get('preview_url')}
+            frameRate={media.getIn(['meta', 'original', 'frame_rate'])}
             blurhash={media.get('blurhash')}
             src={media.get('url')}
-            startTime={time}
+            currentTime={options.startTime}
+            autoPlay={options.autoPlay}
+            volume={options.defaultVolume}
             onCloseVideo={onClose}
             detailed
             alt={media.get('description')}
           />
         </div>
 
-        {status && (
-          <div className={classNames('media-modal__meta')}>
-            <a href={status.get('url')} onClick={this.handleStatusClick}><Icon id='comments' /> <FormattedMessage id='lightbox.view_context' defaultMessage='View context' /></a>
-          </div>
-        )}
+        <div className='media-modal__overlay'>
+          {statusId && <Footer statusId={statusId} withOpenButton onClose={onClose} />}
+        </div>
       </div>
     );
   }

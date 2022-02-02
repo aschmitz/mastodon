@@ -14,6 +14,7 @@ export const me = getMeta('me');
 export const searchEnabled = getMeta('search_enabled');
 export const maxChars = (initialState && initialState.max_toot_chars) || 500;
 export const invitesEnabled = getMeta('invites_enabled');
+export const limitedFederationMode = getMeta('limited_federation_mode');
 export const repository = getMeta('repository');
 export const source_url = getMeta('source_url');
 export const version = getMeta('version');
@@ -26,5 +27,6 @@ export const usePendingItems = getMeta('use_pending_items');
 export const showTrends = getMeta('trends');
 export const title = getMeta('title');
 export const cropImages = getMeta('crop_images');
+export const disableSwiping = getMeta('disable_swiping');
 
 export default initialState;

@@ -15,6 +15,10 @@ import {
   COMPOSE_UPLOAD_FAIL,
   COMPOSE_UPLOAD_UNDO,
   COMPOSE_UPLOAD_PROGRESS,
+  THUMBNAIL_UPLOAD_REQUEST,
+  THUMBNAIL_UPLOAD_SUCCESS,
+  THUMBNAIL_UPLOAD_FAIL,
+  THUMBNAIL_UPLOAD_PROGRESS,
   COMPOSE_SUGGESTIONS_CLEAR,
   COMPOSE_SUGGESTIONS_READY,
   COMPOSE_SUGGESTION_SELECT,
@@ -38,6 +42,9 @@ import {
   COMPOSE_POLL_OPTION_CHANGE,
   COMPOSE_POLL_OPTION_REMOVE,
   COMPOSE_POLL_SETTINGS_CHANGE,
+  INIT_MEDIA_EDIT_MODAL,
+  COMPOSE_CHANGE_MEDIA_DESCRIPTION,
+  COMPOSE_CHANGE_MEDIA_FOCUS,
 } from 'flavours/glitch/actions/compose';
 import { TIMELINE_DELETE } from 'flavours/glitch/actions/timelines';
 import { STORE_HYDRATE } from 'flavours/glitch/actions/store';
@@ -77,6 +84,8 @@ const initialState = ImmutableMap({
   is_uploading: false,
   is_changing_upload: false,
   progress: 0,
+  isUploadingThumbnail: false,
+  thumbnailProgress: 0,
   media_attachments: ImmutableList(),
   pending_media_attachments: 0,
   poll: null,
@@ -91,6 +100,13 @@ const initialState = ImmutableMap({
   resetFileKey: Math.floor((Math.random() * 0x10000)),
   idempotencyKey: null,
   tagHistory: ImmutableList(),
+  media_modal: ImmutableMap({
+    id: null,
+    description: '',
+    focusX: 0,
+    focusY: 0,
+    dirty: false,
+  }),
   doodle: ImmutableMap({
     fg: 'rgb(  0,    0,    0)',
     bg: 'rgb(255,  255,  255)',
@@ -178,7 +194,7 @@ function continueThread (state, status) {
     map.set('in_reply_to', status.id);
     map.update(
       'advanced_options',
-      map => map.merge(new ImmutableMap({ do_not_federate: /👁\ufe0f?\u200b?(?:<\/p>)?$/.test(status.content) }))
+      map => map.merge(new ImmutableMap({ do_not_federate: status.local_only }))
     );
     map.set('privacy', status.visibility);
     map.set('sensitive', false);
@@ -344,7 +360,6 @@ export default function compose(state = initialState, action) {
     });
   case COMPOSE_SPOILERNESS_CHANGE:
     return state.withMutations(map => {
-      map.set('spoiler_text', '');
       map.set('spoiler', !state.get('spoiler'));
       map.set('idempotencyKey', uuid());
 
@@ -378,7 +393,7 @@ export default function compose(state = initialState, action) {
       map.set('privacy', privacyPreference(action.status.get('visibility'), state.get('default_privacy')));
       map.update(
         'advanced_options',
-        map => map.merge(new ImmutableMap({ do_not_federate: /👁\ufe0f?\u200b?(?:<\/p>)?$/.test(action.status.get('content')) }))
+        map => map.merge(new ImmutableMap({ do_not_federate: !!action.status.get('local_only') }))
       );
       map.set('focusDate', new Date());
       map.set('caretPosition', null);
@@ -434,6 +449,35 @@ export default function compose(state = initialState, action) {
     return removeMedia(state, action.media_id);
   case COMPOSE_UPLOAD_PROGRESS:
     return state.set('progress', Math.round((action.loaded / action.total) * 100));
+  case THUMBNAIL_UPLOAD_REQUEST:
+    return state.set('isUploadingThumbnail', true);
+  case THUMBNAIL_UPLOAD_PROGRESS:
+    return state.set('thumbnailProgress', Math.round((action.loaded / action.total) * 100));
+  case THUMBNAIL_UPLOAD_FAIL:
+    return state.set('isUploadingThumbnail', false);
+  case THUMBNAIL_UPLOAD_SUCCESS:
+    return state
+      .set('isUploadingThumbnail', false)
+      .update('media_attachments', list => list.map(item => {
+        if (item.get('id') === action.media.id) {
+          return fromJS(action.media);
+        }
+
+        return item;
+      }));
+  case INIT_MEDIA_EDIT_MODAL:
+    const media =  state.get('media_attachments').find(item => item.get('id') === action.id);
+    return state.set('media_modal', ImmutableMap({
+      id: action.id,
+      description: media.get('description') || '',
+      focusX: media.getIn(['meta', 'focus', 'x'], 0),
+      focusY: media.getIn(['meta', 'focus', 'y'], 0),
+      dirty: false,
+    }));
+  case COMPOSE_CHANGE_MEDIA_DESCRIPTION:
+    return state.setIn(['media_modal', 'description'], action.description).setIn(['media_modal', 'dirty'], true);
+  case COMPOSE_CHANGE_MEDIA_FOCUS:
+    return state.setIn(['media_modal', 'focusX'], action.focusX).setIn(['media_modal', 'focusY'], action.focusY).setIn(['media_modal', 'dirty'], true);
   case COMPOSE_MENTION:
     return state.withMutations(map => {
       map.update('text', text => [text.trim(), `@${action.account.get('acct')} `].filter((str) => str.length !== 0).join(' '));
@@ -470,6 +514,7 @@ export default function compose(state = initialState, action) {
   case COMPOSE_UPLOAD_CHANGE_SUCCESS:
     return state
       .set('is_changing_upload', false)
+      .setIn(['media_modal', 'dirty'], false)
       .update('media_attachments', list => list.map(item => {
         if (item.get('id') === action.media.id) {
           return fromJS(action.media);
@@ -480,8 +525,11 @@ export default function compose(state = initialState, action) {
   case COMPOSE_DOODLE_SET:
     return state.mergeIn(['doodle'], action.options);
   case REDRAFT:
+    const do_not_federate = !!action.status.get('local_only');
+    let text = action.raw_text || unescapeHTML(expandMentions(action.status));
+    if (do_not_federate) text = text.replace(/ ?👁\ufe0f?\u200b?$/, '');
     return state.withMutations(map => {
-      map.set('text', action.raw_text || unescapeHTML(expandMentions(action.status)));
+      map.set('text', text);
       map.set('content_type', action.content_type || 'text/plain');
       map.set('in_reply_to', action.status.get('in_reply_to_id'));
       map.set('privacy', action.status.get('visibility'));
@@ -490,6 +538,10 @@ export default function compose(state = initialState, action) {
       map.set('caretPosition', null);
       map.set('idempotencyKey', uuid());
       map.set('sensitive', action.status.get('sensitive'));
+      map.update(
+        'advanced_options',
+        map => map.merge(new ImmutableMap({ do_not_federate }))
+      );
 
       if (action.status.get('spoiler_text').length > 0) {
         map.set('spoiler', true);

@@ -12,8 +12,10 @@ import {
   mountNotifications,
   unmountNotifications,
   loadPending,
+  markNotificationsAsRead,
 } from 'flavours/glitch/actions/notifications';
 import { addColumn, removeColumn, moveColumn } from 'flavours/glitch/actions/columns';
+import { submitMarkers } from 'flavours/glitch/actions/markers';
 import NotificationContainer from './containers/notification_container';
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
 import ColumnSettingsContainer from './containers/column_settings_container';
@@ -24,18 +26,27 @@ import { debounce } from 'lodash';
 import ScrollableList from 'flavours/glitch/components/scrollable_list';
 import LoadGap from 'flavours/glitch/components/load_gap';
 import Icon from 'flavours/glitch/components/icon';
+import compareId from 'flavours/glitch/util/compare_id';
+import NotificationsPermissionBanner from './components/notifications_permission_banner';
 
 import NotificationPurgeButtonsContainer from 'flavours/glitch/containers/notification_purge_buttons_container';
 
 const messages = defineMessages({
   title: { id: 'column.notifications', defaultMessage: 'Notifications' },
   enterNotifCleaning : { id: 'notification_purge.start', defaultMessage: 'Enter notification cleaning mode' },
+  markAsRead : { id: 'notifications.mark_as_read', defaultMessage: 'Mark every notification as read' },
+});
+
+const getExcludedTypes = createSelector([
+  state => state.getIn(['settings', 'notifications', 'shows']),
+], (shows) => {
+  return ImmutableList(shows.filter(item => !item).keys());
 });
 
 const getNotifications = createSelector([
   state => state.getIn(['settings', 'notifications', 'quickFilter', 'show']),
   state => state.getIn(['settings', 'notifications', 'quickFilter', 'active']),
-  state => ImmutableList(state.getIn(['settings', 'notifications', 'shows']).filter(item => !item).keys()),
+  getExcludedTypes,
   state => state.getIn(['notifications', 'items']),
 ], (showFilterBar, allowedType, excludedTypes, notifications) => {
   if (!showFilterBar || allowedType === 'all') {
@@ -44,7 +55,7 @@ const getNotifications = createSelector([
     // we need to turn it off for FilterBar in order not to block ourselves from seeing a specific category
     return notifications.filterNot(item => item !== null && excludedTypes.includes(item.get('type')));
   }
-  return notifications.filter(item => item !== null && allowedType === item.get('type'));
+  return notifications.filter(item => item === null || allowedType === item.get('type'));
 });
 
 const mapStateToProps = state => ({
@@ -56,12 +67,19 @@ const mapStateToProps = state => ({
   hasMore: state.getIn(['notifications', 'hasMore']),
   numPending: state.getIn(['notifications', 'pendingItems'], ImmutableList()).size,
   notifCleaningActive: state.getIn(['notifications', 'cleaningMode']),
+  lastReadId: state.getIn(['settings', 'notifications', 'showUnread']) ? state.getIn(['notifications', 'readMarkerId']) : '0',
+  canMarkAsRead: state.getIn(['settings', 'notifications', 'showUnread']) && state.getIn(['notifications', 'readMarkerId']) !== '0' && getNotifications(state).some(item => item !== null && compareId(item.get('id'), state.getIn(['notifications', 'readMarkerId'])) > 0),
+  needsNotificationPermission: state.getIn(['settings', 'notifications', 'alerts']).includes(true) && state.getIn(['notifications', 'browserSupport']) && state.getIn(['notifications', 'browserPermission']) === 'default' && !state.getIn(['settings', 'notifications', 'dismissPermissionBanner']),
 });
 
 /* glitch */
 const mapDispatchToProps = dispatch => ({
   onEnterCleaningMode(yes) {
     dispatch(enterNotificationClearingMode(yes));
+  },
+  onMarkAsRead() {
+    dispatch(markNotificationsAsRead());
+    dispatch(submitMarkers({ immediate: true }));
   },
   onMount() {
     dispatch(mountNotifications());
@@ -81,7 +99,6 @@ class Notifications extends React.PureComponent {
     notifications: ImmutablePropTypes.list.isRequired,
     showFilterBar: PropTypes.bool.isRequired,
     dispatch: PropTypes.func.isRequired,
-    shouldUpdateScroll: PropTypes.func,
     intl: PropTypes.object.isRequired,
     isLoading: PropTypes.bool,
     isUnread: PropTypes.bool,
@@ -93,6 +110,9 @@ class Notifications extends React.PureComponent {
     onEnterCleaningMode: PropTypes.func,
     onMount: PropTypes.func,
     onUnmount: PropTypes.func,
+    lastReadId: PropTypes.string,
+    canMarkAsRead: PropTypes.bool,
+    needsNotificationPermission: PropTypes.bool,
   };
 
   static defaultProps = {
@@ -194,12 +214,16 @@ class Notifications extends React.PureComponent {
     this.props.onEnterCleaningMode(!this.props.notifCleaningActive);
   }
 
+  handleMarkAsRead = () => {
+    this.props.onMarkAsRead();
+  }
+
   render () {
-    const { intl, notifications, shouldUpdateScroll, isLoading, isUnread, columnId, multiColumn, hasMore, numPending, showFilterBar } = this.props;
+    const { intl, notifications, isLoading, isUnread, columnId, multiColumn, hasMore, numPending, showFilterBar, lastReadId, canMarkAsRead, needsNotificationPermission } = this.props;
     const { notifCleaning, notifCleaningActive } = this.props;
     const { animatingNCD } = this.state;
     const pinned = !!columnId;
-    const emptyMessage = <FormattedMessage id='empty_column.notifications' defaultMessage="You don't have any notifications yet. Interact with others to start the conversation." />;
+    const emptyMessage = <FormattedMessage id='empty_column.notifications' defaultMessage="You don't have any notifications yet. When other people interact with you, you will see it here." />;
 
     let scrollableContent = null;
 
@@ -224,6 +248,7 @@ class Notifications extends React.PureComponent {
           accountId={item.get('account')}
           onMoveUp={this.handleMoveUp}
           onMoveDown={this.handleMoveDown}
+          unread={lastReadId !== '0' && compareId(item.get('id'), lastReadId) > 0}
         />
       ));
     } else {
@@ -240,17 +265,33 @@ class Notifications extends React.PureComponent {
         showLoading={isLoading && notifications.size === 0}
         hasMore={hasMore}
         numPending={numPending}
+        prepend={needsNotificationPermission && <NotificationsPermissionBanner />}
+        alwaysPrepend
         emptyMessage={emptyMessage}
         onLoadMore={this.handleLoadOlder}
         onLoadPending={this.handleLoadPending}
         onScrollToTop={this.handleScrollToTop}
         onScroll={this.handleScroll}
-        shouldUpdateScroll={shouldUpdateScroll}
         bindToDocument={!multiColumn}
       >
         {scrollableContent}
       </ScrollableList>
     );
+
+    const extraButtons = [];
+
+    if (canMarkAsRead) {
+      extraButtons.push(
+        <button
+          aria-label={intl.formatMessage(messages.markAsRead)}
+          title={intl.formatMessage(messages.markAsRead)}
+          onClick={this.handleMarkAsRead}
+          className='column-header__button'
+        >
+          <Icon id='check' />
+        </button>
+      );
+    }
 
     const notifCleaningButtonClassName = classNames('column-header__button', {
       'active': notifCleaningActive,
@@ -263,7 +304,7 @@ class Notifications extends React.PureComponent {
 
     const msgEnterNotifCleaning = intl.formatMessage(messages.enterNotifCleaning);
 
-    const notifCleaningButton = (
+    extraButtons.push(
       <button
         aria-label={msgEnterNotifCleaning}
         title={msgEnterNotifCleaning}
@@ -300,7 +341,7 @@ class Notifications extends React.PureComponent {
           pinned={pinned}
           multiColumn={multiColumn}
           localSettings={this.props.localSettings}
-          extraButton={notifCleaningButton}
+          extraButton={extraButtons}
           appendContent={notifCleaningDrawer}
         >
           <ColumnSettingsContainer />

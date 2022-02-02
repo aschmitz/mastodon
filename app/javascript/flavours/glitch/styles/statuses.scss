@@ -79,9 +79,14 @@
   background: $ui-highlight-color;
   color: $primary-text-color;
   text-transform: none;
-  line-height: 36px;
+  line-height: 1.2;
   height: auto;
-  padding: 3px 15px;
+  min-height: 36px;
+  min-width: 88px;
+  white-space: normal;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  padding: 0 15px;
   border: 0;
 
   svg {
@@ -122,10 +127,31 @@
   }
 }
 
+a.button.logo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .embed,
 .public-layout {
+  .status__content[data-spoiler=folded] {
+    .e-content {
+      display: none;
+    }
+
+    p:first-child {
+      margin-bottom: 0;
+    }
+  }
+
   .detailed-status {
     padding: 15px;
+
+    .detailed-status__display-avatar .account__avatar {
+      width: 48px;
+      height: 48px;
+    }
   }
 
   .status {
@@ -135,6 +161,11 @@
     &__avatar {
       left: 15px;
       top: 17px;
+
+      .account__avatar {
+        width: 48px;
+        height: 48px;
+      }
     }
 
     &__content {
@@ -162,6 +193,13 @@
     .video-player {
       margin-top: 10px;
     }
+
+    &__action-bar-button {
+      font-size: 18px;
+      width: 23.1429px;
+      height: 23.1429px;
+      line-height: 23.15px;
+    }
   }
 }
 
@@ -181,6 +219,11 @@
       width: auto;
       margin: initial;
       padding: initial;
+      padding-bottom: 1px;
+    }
+
+    .status__visibility-icon {
+      padding: 0 4px;
     }
 
     .status__info .status__display-name {
@@ -189,10 +232,6 @@
       padding: 6px 0;
       padding-right: 25px;
       margin: initial;
-
-      .display-name strong {
-        display: inline;
-      }
     }
 
     .status__avatar {
@@ -216,7 +255,8 @@
         padding-right: 0;
       }
 
-      .status__relative-time {
+      .status__relative-time,
+      .status__visibility-icon {
         float: left;
       }
     }
