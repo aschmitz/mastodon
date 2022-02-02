@@ -36,7 +36,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["conversation_id"], name: "index_account_conversations_on_conversation_id"
   end
 
-  create_table "account_deletion_requests", force: :cascade do |t|
+  create_table "account_deletion_requests", id: :bigint, default: -> { "timestamp_id('account_deletion_requests'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -84,7 +84,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["target_account_id"], name: "index_account_moderation_notes_on_target_account_id"
   end
 
-  create_table "account_notes", force: :cascade do |t|
+  create_table "account_notes", id: :bigint, default: -> { "timestamp_id('account_notes'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.bigint "target_account_id"
     t.text "comment", null: false
@@ -275,7 +275,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["status_id"], name: "index_bookmarks_on_status_id"
   end
 
-  create_table "canonical_email_blocks", force: :cascade do |t|
+  create_table "canonical_email_blocks", id: :bigint, default: -> { "timestamp_id('canonical_email_blocks'::text)" }, force: :cascade do |t|
     t.string "canonical_email_hash", default: "", null: false
     t.bigint "reference_account_id", null: false
     t.datetime "created_at", precision: 6, null: false
@@ -334,7 +334,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["account_id"], name: "index_custom_filters_on_account_id"
   end
 
-  create_table "devices", force: :cascade do |t|
+  create_table "devices", id: :bigint, default: -> { "timestamp_id('devices'::text)" }, force: :cascade do |t|
     t.bigint "access_token_id"
     t.bigint "account_id"
     t.string "device_id", default: "", null: false
@@ -410,7 +410,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["tag_id"], name: "index_featured_tags_on_tag_id"
   end
 
-  create_table "follow_recommendation_suppressions", force: :cascade do |t|
+  create_table "follow_recommendation_suppressions", id: :bigint, default: -> { "timestamp_id('follow_recommendation_suppressions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: 6, null: false
     t.datetime "updated_at", precision: 6, null: false
@@ -476,7 +476,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["user_id"], name: "index_invites_on_user_id"
   end
 
-  create_table "ip_blocks", force: :cascade do |t|
+  create_table "ip_blocks", id: :bigint, default: -> { "timestamp_id('ip_blocks'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.datetime "expires_at"
@@ -503,7 +503,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["account_id"], name: "index_lists_on_account_id"
   end
 
-  create_table "login_activities", force: :cascade do |t|
+  create_table "login_activities", id: :bigint, default: -> { "timestamp_id('login_activities'::text)" }, force: :cascade do |t|
     t.bigint "user_id", null: false
     t.string "authentication_method"
     t.string "provider"
@@ -632,7 +632,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["uid"], name: "index_oauth_applications_on_uid", unique: true
   end
 
-  create_table "one_time_keys", force: :cascade do |t|
+  create_table "one_time_keys", id: :bigint, default: -> { "timestamp_id('one_time_keys'::text)" }, force: :cascade do |t|
     t.bigint "device_id"
     t.string "key_id", default: "", null: false
     t.text "key", default: "", null: false
@@ -745,7 +745,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["target_account_id"], name: "index_reports_on_target_account_id"
   end
 
-  create_table "rules", force: :cascade do |t|
+  create_table "rules", id: :bigint, default: -> { "timestamp_id('rules'::text)" }, force: :cascade do |t|
     t.integer "priority", default: 0, null: false
     t.datetime "deleted_at"
     t.text "text", default: "", null: false
@@ -853,7 +853,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["tag_id", "status_id"], name: "index_statuses_tags_on_tag_id_and_status_id", unique: true
   end
 
-  create_table "system_keys", force: :cascade do |t|
+  create_table "system_keys", id: :bigint, default: -> { "timestamp_id('system_keys'::text)" }, force: :cascade do |t|
     t.binary "key"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -884,7 +884,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["uri"], name: "index_tombstones_on_uri"
   end
 
-  create_table "unavailable_domains", force: :cascade do |t|
+  create_table "unavailable_domains", id: :bigint, default: -> { "timestamp_id('unavailable_domains'::text)" }, force: :cascade do |t|
     t.string "domain", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -968,7 +968,7 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     t.index ["user_id"], name: "index_web_settings_on_user_id", unique: true
   end
 
-  create_table "webauthn_credentials", force: :cascade do |t|
+  create_table "webauthn_credentials", id: :bigint, default: -> { "timestamp_id('webauthn_credentials'::text)" }, force: :cascade do |t|
     t.string "external_id", null: false
     t.string "public_key", null: false
     t.string "nickname", null: false
@@ -1009,8 +1009,8 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
   add_foreign_key "blocks", "accounts", on_delete: :cascade
   add_foreign_key "bookmarks", "accounts", on_delete: :cascade
   add_foreign_key "bookmarks", "statuses", on_delete: :cascade
-  add_foreign_key "conversation_mutes", "accounts", on_delete: :cascade
   add_foreign_key "canonical_email_blocks", "accounts", column: "reference_account_id", on_delete: :cascade
+  add_foreign_key "conversation_mutes", "accounts", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade
   add_foreign_key "custom_filters", "accounts", on_delete: :cascade
   add_foreign_key "devices", "accounts", on_delete: :cascade
@@ -1153,4 +1153,5 @@ ActiveRecord::Schema.define(version: 2021_06_30_000137) do
     ORDER BY (sum(t0.rank)) DESC;
   SQL
   add_index "follow_recommendations", ["account_id"], name: "index_follow_recommendations_on_account_id", unique: true
+
 end
