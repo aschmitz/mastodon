@@ -102,7 +102,7 @@ ActiveRecord::Schema.define(version: 2022_01_18_183123) do
     t.index ["account_id"], name: "index_account_stats_on_account_id", unique: true
   end
 
-  create_table "account_statuses_cleanup_policies", force: :cascade do |t|
+  create_table "account_statuses_cleanup_policies", id: :bigint, default: -> { "timestamp_id('account_statuses_cleanup_policies'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.boolean "enabled", default: true, null: false
     t.integer "min_status_age", default: 1209600, null: false
@@ -679,7 +679,7 @@ ActiveRecord::Schema.define(version: 2022_01_18_183123) do
     t.index ["status_id"], name: "index_polls_on_status_id"
   end
 
-  create_table "preview_card_providers", force: :cascade do |t|
+  create_table "preview_card_providers", id: :bigint, default: -> { "timestamp_id('preview_card_providers'::text)" }, force: :cascade do |t|
     t.string "domain", default: "", null: false
     t.string "icon_file_name"
     t.string "icon_content_type"
@@ -816,7 +816,7 @@ ActiveRecord::Schema.define(version: 2022_01_18_183123) do
     t.index ["var"], name: "index_site_uploads_on_var", unique: true
   end
 
-  create_table "status_edits", force: :cascade do |t|
+  create_table "status_edits", id: :bigint, default: -> { "timestamp_id('status_edits'::text)" }, force: :cascade do |t|
     t.bigint "status_id", null: false
     t.bigint "account_id"
     t.text "text", default: "", null: false
