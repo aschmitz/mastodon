@@ -248,7 +248,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.bigint "status_ids", array: true
   end
 
-  create_table "appeals", force: :cascade do |t|
+  create_table "appeals", id: :bigint, default: -> { "timestamp_id('appeals'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "account_warning_id", null: false
     t.text "text", default: "", null: false
@@ -264,7 +264,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["rejected_by_account_id"], name: "index_appeals_on_rejected_by_account_id", where: "(rejected_by_account_id IS NOT NULL)"
   end
 
-  create_table "backups", force: :cascade do |t|
+  create_table "backups", id: :bigint, default: -> { "timestamp_id('backups'::text)" }, force: :cascade do |t|
     t.bigint "user_id"
     t.string "dump_file_name"
     t.string "dump_content_type"
@@ -295,7 +295,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["status_id"], name: "index_bookmarks_on_status_id"
   end
 
-  create_table "bulk_import_rows", force: :cascade do |t|
+  create_table "bulk_import_rows", id: :bigint, default: -> { "timestamp_id('bulk_import_rows'::text)" }, force: :cascade do |t|
     t.bigint "bulk_import_id", null: false
     t.jsonb "data"
     t.datetime "created_at", precision: 6, null: false
@@ -303,7 +303,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["bulk_import_id"], name: "index_bulk_import_rows_on_bulk_import_id"
   end
 
-  create_table "bulk_imports", force: :cascade do |t|
+  create_table "bulk_imports", id: :bigint, default: -> { "timestamp_id('bulk_imports'::text)" }, force: :cascade do |t|
     t.integer "type", null: false
     t.integer "state", null: false
     t.integer "total_items", default: 0, null: false
@@ -320,7 +320,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["id"], name: "index_bulk_imports_unconfirmed", where: "(state = 0)"
   end
 
-  create_table "canonical_email_blocks", force: :cascade do |t|
+  create_table "canonical_email_blocks", id: :bigint, default: -> { "timestamp_id('canonical_email_blocks'::text)" }, force: :cascade do |t|
     t.string "canonical_email_hash", default: "", null: false
     t.bigint "reference_account_id"
     t.datetime "created_at", precision: 6, null: false
@@ -367,7 +367,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["shortcode", "domain"], name: "index_custom_emojis_on_shortcode_and_domain", unique: true
   end
 
-  create_table "custom_filter_keywords", force: :cascade do |t|
+  create_table "custom_filter_keywords", id: :bigint, default: -> { "timestamp_id('custom_filter_keywords'::text)" }, force: :cascade do |t|
     t.bigint "custom_filter_id", null: false
     t.text "keyword", default: "", null: false
     t.boolean "whole_word", default: true, null: false
@@ -376,7 +376,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["custom_filter_id"], name: "index_custom_filter_keywords_on_custom_filter_id"
   end
 
-  create_table "custom_filter_statuses", force: :cascade do |t|
+  create_table "custom_filter_statuses", id: :bigint, default: -> { "timestamp_id('custom_filter_statuses'::text)" }, force: :cascade do |t|
     t.bigint "custom_filter_id", null: false
     t.bigint "status_id", null: false
     t.datetime "created_at", precision: 6, null: false
@@ -385,7 +385,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["status_id"], name: "index_custom_filter_statuses_on_status_id"
   end
 
-  create_table "custom_filters", force: :cascade do |t|
+  create_table "custom_filters", id: :bigint, default: -> { "timestamp_id('custom_filters'::text)" }, force: :cascade do |t|
     t.bigint "account_id"
     t.datetime "expires_at"
     t.text "phrase", default: "", null: false
@@ -461,7 +461,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["status_id"], name: "index_favourites_on_status_id"
   end
 
-  create_table "featured_tags", force: :cascade do |t|
+  create_table "featured_tags", id: :bigint, default: -> { "timestamp_id('featured_tags'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "tag_id", null: false
     t.bigint "statuses_count", default: 0, null: false
@@ -767,7 +767,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["domain"], name: "index_preview_card_providers_on_domain", unique: true
   end
 
-  create_table "preview_card_trends", force: :cascade do |t|
+  create_table "preview_card_trends", id: :bigint, default: -> { "timestamp_id('preview_card_trends'::text)" }, force: :cascade do |t|
     t.bigint "preview_card_id", null: false
     t.float "score", default: 0.0, null: false
     t.integer "rank", default: 0, null: false
@@ -776,7 +776,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["preview_card_id"], name: "index_preview_card_trends_on_preview_card_id", unique: true
   end
 
-  create_table "preview_cards", force: :cascade do |t|
+  create_table "preview_cards", id: :bigint, default: -> { "timestamp_id('preview_cards'::text)" }, force: :cascade do |t|
     t.string "url", default: "", null: false
     t.string "title", default: "", null: false
     t.string "description", default: "", null: false
@@ -937,7 +937,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["status_id"], name: "index_status_stats_on_status_id", unique: true
   end
 
-  create_table "status_trends", force: :cascade do |t|
+  create_table "status_trends", id: :bigint, default: -> { "timestamp_id('status_trends'::text)" }, force: :cascade do |t|
     t.bigint "status_id", null: false
     t.bigint "account_id", null: false
     t.float "score", default: 0.0, null: false
@@ -996,7 +996,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.datetime "updated_at", null: false
   end
 
-  create_table "tag_follows", force: :cascade do |t|
+  create_table "tag_follows", id: :bigint, default: -> { "timestamp_id('tag_follows'::text)" }, force: :cascade do |t|
     t.bigint "tag_id", null: false
     t.bigint "account_id", null: false
     t.datetime "created_at", precision: 6, null: false
@@ -1005,7 +1005,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["tag_id"], name: "index_tag_follows_on_tag_id"
   end
 
-  create_table "tags", force: :cascade do |t|
+  create_table "tags", id: :bigint, default: -> { "timestamp_id('tags'::text)" }, force: :cascade do |t|
     t.string "name", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -1046,7 +1046,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["user_id"], name: "index_user_invite_requests_on_user_id"
   end
 
-  create_table "user_roles", force: :cascade do |t|
+  create_table "user_roles", id: :bigint, default: -> { "timestamp_id('user_roles'::text)" }, force: :cascade do |t|
     t.string "name", default: "", null: false
     t.string "color", default: "", null: false
     t.integer "position", default: 0, null: false
@@ -1056,7 +1056,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.datetime "updated_at", precision: 6, null: false
   end
 
-  create_table "users", force: :cascade do |t|
+  create_table "users", id: :bigint, default: -> { "timestamp_id('users'::text)" }, force: :cascade do |t|
     t.string "email", default: "", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
@@ -1136,7 +1136,7 @@ ActiveRecord::Schema.define(version: 2023_07_02_151753) do
     t.index ["user_id"], name: "index_webauthn_credentials_on_user_id"
   end
 
-  create_table "webhooks", force: :cascade do |t|
+  create_table "webhooks", id: :bigint, default: -> { "timestamp_id('webhooks'::text)" }, force: :cascade do |t|
     t.string "url", null: false
     t.string "events", default: [], null: false, array: true
     t.string "secret", default: "", null: false
