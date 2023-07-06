@@ -1,10 +1,13 @@
 # frozen_string_literal: true
 
 class FetchLinkCardService < BaseService
+  include Redisable
+  include Lockable
+
   URL_PATTERN = %r{
-    (#{Twitter::TwitterText::Regex[:valid_url_preceding_chars]})                                                                #   $1 preceeding chars
+    (#{Twitter::TwitterText::Regex[:valid_url_preceding_chars]})                                                                #   $1 preceding chars
     (                                                                                                                           #   $2 URL
-      (https?:\/\/)                                                                                                             #   $3 Protocol (required)
+      (https?://)                                                                                                               #   $3 Protocol (required)
       (#{Twitter::TwitterText::Regex[:valid_domain]})                                                                           #   $4 Domain(s)
       (?::(#{Twitter::TwitterText::Regex[:valid_port_number]}))?                                                                #   $5 Port number (optional)
       (/#{Twitter::TwitterText::Regex[:valid_url_path]}*)?                                                                      #   $6 URL Path and anchor
@@ -20,18 +23,14 @@ class FetchLinkCardService < BaseService
 
     @url = @original_url.to_s
 
-    RedisLock.acquire(lock_options) do |lock|
-      if lock.acquired?
-        @card = PreviewCard.find_by(url: @url)
-        process_url if @card.nil? || @card.updated_at <= 2.weeks.ago || @card.missing_image?
-      else
-        raise Mastodon::RaceConditionError
-      end
+    with_redis_lock("fetch:#{@original_url}") do
+      @card = PreviewCard.find_by(url: @url)
+      process_url if @card.nil? || @card.updated_at <= 2.weeks.ago || @card.missing_image?
     end
 
     attach_card if @card&.persisted?
   rescue HTTP::Error, OpenSSL::SSL::SSLError, Addressable::URI::InvalidURIError, Mastodon::HostValidationError, Mastodon::LengthValidationError => e
-    Rails.logger.debug "Error fetching link #{@original_url}: #{e}"
+    Rails.logger.debug { "Error fetching link #{@original_url}: #{e}" }
     nil
   end
 
@@ -46,7 +45,7 @@ class FetchLinkCardService < BaseService
   def html
     return @html if defined?(@html)
 
-    Request.new(:get, @url).add_headers('Accept' => 'text/html', 'User-Agent' => Mastodon::Version.user_agent + ' Bot').perform do |res|
+    Request.new(:get, @url).add_headers('Accept' => 'text/html', 'User-Agent' => "#{Mastodon::Version.user_agent} Bot").perform do |res|
       # We follow redirects, and ideally we want to save the preview card for
       # the destination URL and not any link shortener in-between, so here
       # we set the URL to the one of the last response in the redirect chain
@@ -70,16 +69,14 @@ class FetchLinkCardService < BaseService
   end
 
   def parse_urls
-    urls = begin
-      if @status.local?
-        @status.text.scan(URL_PATTERN).map { |array| Addressable::URI.parse(array[1]).normalize }
-      else
-        document = Nokogiri::HTML(@status.text)
-        links    = document.css('a')
+    urls = if @status.local?
+             @status.text.scan(URL_PATTERN).map { |array| Addressable::URI.parse(array[1]).normalize }
+           else
+             document = Nokogiri::HTML(@status.text)
+             links = document.css('a')
 
-        links.filter_map { |a| Addressable::URI.parse(a['href']) unless skip_link?(a) }.filter_map(&:normalize)
-      end
-    end
+             links.filter_map { |a| Addressable::URI.parse(a['href']) unless skip_link?(a) }.filter_map(&:normalize)
+           end
 
     urls.reject { |uri| bad_url?(uri) }.first
   end
@@ -134,7 +131,7 @@ class FetchLinkCardService < BaseService
     when 'video'
       @card.width            = embed[:width].presence  || 0
       @card.height           = embed[:height].presence || 0
-      @card.html             = Formatter.instance.sanitize(embed[:html], Sanitize::Config::MASTODON_OEMBED)
+      @card.html             = Sanitize.fragment(embed[:html], Sanitize::Config::MASTODON_OEMBED)
       @card.image_remote_url = (url + embed[:thumbnail_url]).to_s if embed[:thumbnail_url].present?
     when 'rich'
       # Most providers rely on <script> tags, which is a no-no
@@ -152,9 +149,5 @@ class FetchLinkCardService < BaseService
     @card = PreviewCard.find_or_initialize_by(url: link_details_extractor.canonical_url) if link_details_extractor.canonical_url != @card.url
     @card.assign_attributes(link_details_extractor.to_preview_card_attributes)
     @card.save_with_optional_image! unless @card.title.blank? && @card.html.blank?
-  end
-
-  def lock_options
-    { redis: Redis.current, key: "fetch:#{@original_url}", autorelease: 15.minutes.seconds }
   end
 end
