@@ -904,7 +904,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_09_07_150100) do
     t.index ["var"], name: "index_site_uploads_on_var", unique: true
   end
 
-  create_table "software_updates", force: :cascade do |t|
+  create_table "software_updates", id: :bigint, default: -> { "timestamp_id('software_updates'::text)" }, force: :cascade do |t|
     t.string "version", null: false
     t.boolean "urgent", default: false, null: false
     t.integer "type", default: 0, null: false
