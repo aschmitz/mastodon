@@ -475,7 +475,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_01_11_033014) do
     t.index ["tag_id"], name: "index_featured_tags_on_tag_id"
   end
 
-  create_table "follow_recommendation_mutes", force: :cascade do |t|
+  create_table "follow_recommendation_mutes", id: :bigint, default: -> { "timestamp_id('follow_recommendation_mutes'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "target_account_id", null: false
     t.datetime "created_at", null: false
@@ -484,23 +484,16 @@ ActiveRecord::Schema[7.1].define(version: 2024_01_11_033014) do
     t.index ["target_account_id"], name: "index_follow_recommendation_mutes_on_target_account_id"
   end
 
-  create_table "follow_recommendation_suppressions", force: :cascade do |t|
+  create_table "follow_recommendation_suppressions", id: :bigint, default: -> { "timestamp_id('follow_recommendation_suppressions'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["account_id", "target_account_id"], name: "idx_on_account_id_target_account_id_a8c8ddf44e", unique: true
-    t.index ["target_account_id"], name: "index_follow_recommendation_mutes_on_target_account_id"
-  end
-
-  create_table "follow_requests", id: :bigint, default: -> { "timestamp_id('follow_requests'::text)" }, force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["account_id"], name: "index_follow_recommendation_suppressions_on_account_id", unique: true
   end
 
-  create_table "follow_requests", force: :cascade do |t|
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
+  create_table "follow_requests", id: :bigint, default: -> { "timestamp_id('follow_requests'::text)" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
     t.bigint "account_id", null: false
     t.bigint "target_account_id", null: false
     t.boolean "show_reblogs", default: true, null: false
@@ -523,7 +516,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_01_11_033014) do
     t.index ["target_account_id"], name: "index_follows_on_target_account_id"
   end
 
-  create_table "generated_annual_reports", force: :cascade do |t|
+  create_table "generated_annual_reports", id: :bigint, default: -> { "timestamp_id('generated_annual_reports'::text)" }, force: :cascade do |t|
     t.bigint "account_id", null: false
     t.integer "year", null: false
     t.jsonb "data", null: false
@@ -534,7 +527,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_01_11_033014) do
     t.index ["account_id", "year"], name: "index_generated_annual_reports_on_account_id_and_year", unique: true
   end
 
-  create_table "identities", force: :cascade do |t|
+  create_table "identities", id: :bigint, default: -> { "timestamp_id('identities'::text)" }, force: :cascade do |t|
     t.string "provider", default: "", null: false
     t.string "uid", default: "", null: false
     t.datetime "created_at", precision: nil, null: false
