@@ -71,11 +71,11 @@ class Sanitize
                  :relative
                end
 
-      current_node.replace(Nokogiri::XML::Text.new(current_node.text, current_node.document)) unless LINK_PROTOCOLS.include?(scheme)
+      current_node.replace(current_node.document.create_text_node(current_node.text)) unless LINK_PROTOCOLS.include?(scheme)
     end
 
     MASTODON_STRICT = freeze_config(
-      elements: %w(p br span a abbr del pre blockquote code b strong u sub sup i em h1 h2 h3 h4 h5 ul ol li ruby rt rp),
+      elements: %w(p br span a abbr del s pre blockquote code b strong u sub sup i em h1 h2 h3 h4 h5 ul ol li ruby rt rp),
 
       attributes: {
         'a' => %w(href rel class title translate),
@@ -107,18 +107,16 @@ class Sanitize
     )
 
     MASTODON_OEMBED = freeze_config(
-      elements: %w(audio embed iframe source video),
+      elements: %w(audio iframe source video),
 
       attributes: {
         'audio' => %w(controls),
-        'embed' => %w(height src type width),
         'iframe' => %w(allowfullscreen frameborder height scrolling src width),
         'source' => %w(src type),
         'video' => %w(controls height loop width),
       },
 
       protocols: {
-        'embed' => { 'src' => HTTP_PROTOCOLS },
         'iframe' => { 'src' => HTTP_PROTOCOLS },
         'source' => { 'src' => HTTP_PROTOCOLS },
       },

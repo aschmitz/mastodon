@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'mastodon/cli/accounts'
 
-describe Mastodon::CLI::Accounts do
+RSpec.describe Mastodon::CLI::Accounts do
   subject { cli.invoke(action, arguments, options) }
 
   let(:cli) { described_class.new }
@@ -335,11 +335,20 @@ describe Mastodon::CLI::Accounts do
       context 'with --reset-password option' do
         let(:options) { { reset_password: true } }
 
+        let(:user) { Fabricate(:user, password: original_password) }
+        let(:original_password) { 'foobar12345' }
+        let(:new_password) { 'new_password12345' }
+
         it 'returns a new password for the user' do
-          allow(SecureRandom).to receive(:hex).and_return('new_password')
+          allow(SecureRandom).to receive(:hex).and_return(new_password)
+          allow(Account).to receive(:find_local).and_return(user.account)
+          allow(user).to receive(:change_password!).and_call_original
 
           expect { subject }
-            .to output_results('new_password')
+            .to output_results(new_password)
+
+          expect(user).to have_received(:change_password!).with(new_password)
+          expect(user.reload).to_not be_external_or_valid_password(original_password)
         end
       end
 
@@ -609,6 +618,25 @@ describe Mastodon::CLI::Accounts do
         expect(unfollow_service).to have_received(:call).with(follower_chris, target_account).once
         expect(unfollow_service).to have_received(:call).with(follower_rambo, target_account).once
         expect(unfollow_service).to have_received(:call).with(follower_ana, target_account).once
+      end
+    end
+  end
+
+  describe '#fix_duplicates' do
+    let(:action) { :fix_duplicates }
+    let(:service_double) { instance_double(ActivityPub::FetchRemoteAccountService, call: nil) }
+    let(:uri) { 'https://host.example/same/value' }
+
+    context 'when there are duplicate URI accounts' do
+      before do
+        Fabricate.times(2, :account, domain: 'host.example', uri: uri)
+        allow(ActivityPub::FetchRemoteAccountService).to receive(:new).and_return(service_double)
+      end
+
+      it 'finds the duplicates and calls fetch remote account service' do
+        expect { subject }
+          .to output_results('Duplicates found')
+        expect(service_double).to have_received(:call).with(uri)
       end
     end
   end

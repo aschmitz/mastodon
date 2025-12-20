@@ -71,7 +71,8 @@ class User < ApplicationRecord
   ACTIVE_DURATION = ENV.fetch('USER_ACTIVE_DAYS', 7).to_i.days.freeze
 
   devise :two_factor_authenticatable,
-         otp_secret_encryption_key: Rails.configuration.x.otp_secret
+         otp_secret_encryption_key: Rails.configuration.x.otp_secret,
+         otp_secret_length: 32
 
   include LegacyOtpSecret # Must be after the above `devise` line in order to override the legacy method
 
@@ -100,7 +101,7 @@ class User < ApplicationRecord
 
   validates :email, presence: true, email_address: true
 
-  validates_with BlacklistedEmailValidator, if: -> { ENV['EMAIL_DOMAIN_LISTS_APPLY_AFTER_CONFIRMATION'] == 'true' || !confirmed? }
+  validates_with UserEmailValidator, if: -> { ENV['EMAIL_DOMAIN_LISTS_APPLY_AFTER_CONFIRMATION'] == 'true' || !confirmed? }
   validates_with EmailMxValidator, if: :validate_email_dns?
   validates :agreement, acceptance: { allow_nil: false, accept: [true, 'true', '1'] }, on: :create
 
@@ -117,6 +118,7 @@ class User < ApplicationRecord
   scope :pending, -> { where(approved: false) }
   scope :approved, -> { where(approved: true) }
   scope :confirmed, -> { where.not(confirmed_at: nil) }
+  scope :unconfirmed, -> { where(confirmed_at: nil) }
   scope :enabled, -> { where(disabled: false) }
   scope :disabled, -> { where(disabled: true) }
   scope :active, -> { confirmed.signed_in_recently.account_not_suspended }
@@ -163,6 +165,10 @@ class User < ApplicationRecord
     end
   end
 
+  def signed_in_recently?
+    current_sign_in_at.present? && current_sign_in_at >= ACTIVE_DURATION.ago
+  end
+
   def confirmed?
     confirmed_at.present?
   end
@@ -177,6 +183,10 @@ class User < ApplicationRecord
 
   def disable!
     update!(disabled: true)
+
+    # This terminates all connections for the given account with the streaming
+    # server:
+    redis.publish("timeline:system:#{account.id}", Oj.dump(event: :kill))
   end
 
   def enable!
@@ -243,10 +253,6 @@ class User < ApplicationRecord
 
   def unconfirmed_or_pending?
     unconfirmed? || pending?
-  end
-
-  def inactive_message
-    approved? ? super : :pending
   end
 
   def approve!
@@ -358,17 +364,22 @@ class User < ApplicationRecord
   end
 
   def reset_password!
+    # First, change password to something random, this revokes sessions and on-going access:
+    change_password!(SecureRandom.hex)
+
+    # Finally, send a reset password prompt to the user
+    send_reset_password_instructions
+  end
+
+  def change_password!(new_password)
     # First, change password to something random and deactivate all sessions
     transaction do
-      update(password: SecureRandom.hex)
+      update(password: new_password)
       session_activations.destroy_all
     end
 
     # Then, remove all authorized applications and connected push subscriptions
     revoke_access!
-
-    # Finally, send a reset password prompt to the user
-    send_reset_password_instructions
   end
 
   protected

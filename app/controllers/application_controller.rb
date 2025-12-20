@@ -23,7 +23,6 @@ class ApplicationController < ActionController::Base
   helper_method :current_theme
   helper_method :single_user_mode?
   helper_method :use_seamless_external_login?
-  helper_method :omniauth_only?
   helper_method :sso_account_settings
   helper_method :limited_federation_mode?
   helper_method :body_class_string
@@ -75,7 +74,23 @@ class ApplicationController < ActionController::Base
   end
 
   def require_functional!
-    redirect_to edit_user_registration_path unless current_user.functional?
+    return if current_user.functional?
+
+    respond_to do |format|
+      format.any do
+        redirect_to edit_user_registration_path
+      end
+
+      format.json do
+        if !current_user.confirmed?
+          render json: { error: 'Your login is missing a confirmed e-mail address' }, status: 403
+        elsif !current_user.approved?
+          render json: { error: 'Your login is currently pending approval' }, status: 403
+        elsif !current_user.functional?
+          render json: { error: 'Your login is currently disabled' }, status: 403
+        end
+      end
+    end
   end
 
   def skip_csrf_meta_tags?
@@ -138,10 +153,6 @@ class ApplicationController < ActionController::Base
 
   def use_seamless_external_login?
     Devise.pam_authentication || Devise.ldap_authentication
-  end
-
-  def omniauth_only?
-    ENV['OMNIAUTH_ONLY'] == 'true'
   end
 
   def sso_account_settings

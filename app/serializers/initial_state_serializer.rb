@@ -19,10 +19,10 @@ class InitialStateSerializer < ActiveModel::Serializer
 
   def poll_limits
     {
-      max_options: PollValidator::MAX_OPTIONS,
-      max_option_chars: PollValidator::MAX_OPTION_CHARS,
-      min_expiration: PollValidator::MIN_EXPIRATION,
-      max_expiration: PollValidator::MAX_EXPIRATION,
+      max_options: PollOptionsValidator::MAX_OPTIONS,
+      max_option_chars: PollOptionsValidator::MAX_OPTION_CHARS,
+      min_expiration: PollExpirationValidator::MIN_EXPIRATION,
+      max_expiration: PollExpirationValidator::MAX_EXPIRATION,
     }
   end
 
@@ -39,6 +39,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:expand_spoilers]   = object_account_user.setting_expand_spoilers
       store[:reduce_motion]     = object_account_user.setting_reduce_motion
       store[:disable_swiping]   = object_account_user.setting_disable_swiping
+      store[:disable_hover_cards] = object_account_user.setting_disable_hover_cards
       store[:advanced_layout]   = object_account_user.setting_advanced_layout
       store[:use_blurhash]      = object_account_user.setting_use_blurhash
       store[:use_pending_items] = object_account_user.setting_use_pending_items

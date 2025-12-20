@@ -7,7 +7,6 @@ sl:
     hosted_on: Mastodon gostuje na %{domain}
     title: O programu
   accounts:
-    follow: Sledi
     followers:
       few: Sledilci
       one: Sledilec
@@ -26,9 +25,12 @@ sl:
       other: Objav
       two: Objavi
     posts_tab_heading: Objave
+    self_follow_error: Ni dovoljeno slediti lastnemu računu
   admin:
     account_actions:
       action: Izvedi dejanje
+      already_silenced: Ta račun je že omejen.
+      already_suspended: Ta račun je že suspendiran.
       title: Izvedi moderirano dejanje za %{acct}
     account_moderation_notes:
       create: Pusti opombo
@@ -50,6 +52,7 @@ sl:
         title: Spremeni e-naslov za %{username}
       change_role:
         changed_msg: Vloga uspešno spremenjena!
+        edit_roles: Upravljaj z uporabniškimi vlogami
         label: Spremeni vlogo
         no_role: Brez vloge
         title: Spremeni vlogo za %{username}
@@ -232,6 +235,7 @@ sl:
         update_custom_emoji: Posodobi emotikon po meri
         update_domain_block: Posodobi blokado domene
         update_ip_block: Posodobi pravilo IP
+        update_report: Posodobi poročilo
         update_status: Posodobi objavo
         update_user_role: Posodobi vlogo
       actions:
@@ -486,6 +490,9 @@ sl:
       title: Sledi priporočilom
       unsuppress: Obnovi sledenje priporočilom
     instances:
+      audit_log:
+        title: Nedavni revizijski zapisi
+        view_all: Prikaži ves revizijski dnevnik
       availability:
         description_html:
           few: Če dostava v domeno spodleti <strong>%{count} različne dni</strong> brez uspeha, ne bo nadaljnjih poskusov dostopa, razen če je prejeta dostava <em>iz</em> domene.
@@ -622,6 +629,7 @@ sl:
         suspend_description_html: Račun in vsa njegova vsebina ne bo dostopna in bo postopoma izbrisana, interakcija z njim pa ne bo več možna. Dejanje je moč povrniti v roku 30 dni. Zaključi vse prijave zoper ta račun.
       actions_description_html: Odločite se, katere ukrepe boste sprejeli za rešitev te prijave. Če sprejmete kazenski ukrep proti prijavljenemu računu, mu bo poslano e-poštno obvestilo, razen če je izbrana kategorija <strong>Neželena pošta</strong>.
       actions_description_remote_html: Odločite se za dejanje, ki bo odločilo o tej prijavi. To bo vplivalo le na to, kako <strong>vaš</strong> strežnik komunicira s tem oddaljenim računom in obravnava njegovo vsebino.
+      actions_no_posts: To poročilo ni vezano na nobene objave, ki bi jih lahko izbrisali
       add_to_report: Dodaj več v prijavo
       already_suspended_badges:
         local: Že suspendiran na tem strežniku
@@ -662,6 +670,7 @@ sl:
       report: 'Prijavi #%{id}'
       reported_account: Prijavljeni račun
       reported_by: Prijavil/a
+      reported_with_application: Prijavljeno s programom
       resolved: Razrešeni
       resolved_msg: Prijava je uspešno razrešena!
       skip_to_actions: Preskoči na dejanja
@@ -895,6 +904,9 @@ sl:
         message_html: Nobenih pravil strežnika niste določili.
       sidekiq_process_check:
         message_html: Noben proces Sidekiq ne poteka za %{value} vrst. Preglejte svojo prilagoditev Sidekiq
+      software_version_check:
+        action: Oglejte si razpoložljive posodobitve
+        message_html: Na voljo je posodobitev Mastodona.
       software_version_critical_check:
         action: Glejte razpoložljive posodobitve
         message_html: Na voljo je kritična posodobitev Mastodona. Posodobite čim prej.
@@ -908,16 +920,39 @@ sl:
         action: Preverite tukaj za več informacij
         message_html: "<strong>Vaša predmetna shramba je napačno nastavljena. Zasebnost vaših uporabnikov je izpostavljena tveganjem.</strong>"
     tags:
+      moderation:
+        not_trendable: Ni v trendu
+        not_usable: Ni uporabno
+        pending_review: Čakajoče na pregled
+        review_requested: Zahtevan pregled
+        reviewed: Pregledano
+        title: Stanje
+        trendable: V trendu
+        unreviewed: Nepregledano
+        usable: Uporabno
+      name: Ime
+      newest: Najnovejše
+      oldest: Najstarejše
+      open: Prikaži javno
+      reset: Ponastavi
       review: Stanje pregleda
+      search: Išči
+      title: Ključniki
       updated_msg: Nastavitve ključnikov uspešno posodobljene
     title: Upravljanje
     trends:
       allow: Dovoli
       approved: Odobren
+      confirm_allow: Ali ste prepričani, da želite dopustiti izbrane oznake?
+      confirm_disallow: Ali ste prepričani, da želite prepovedati izbrane oznake?
       disallow: Ne dovoli
       links:
         allow: Dovoli povezavo
         allow_provider: Dovoli izdajatelja
+        confirm_allow: Ali ste prepričani, da želite dopustiti izbrane povezave?
+        confirm_allow_provider: Ali ste prepričani, da želite dopustiti izbrane ponudnike?
+        confirm_disallow: Ali ste prepričani, da želite prepovedati izbrane povezave?
+        confirm_disallow_provider: Ali ste prepričani, da želite prepovedati izbrane ponudnike?
         description_html: To so povezave, ki jih trenutno veliko delijo računi, iz katerih vaš strežnik vidi objave. Vašim uporabnikom lahko pomaga izvedeti, kaj se dogaja po svetu. Nobene povezave niso javno prikazane, dokler ne odobrite izdajatelja. Posamezne povezave lahko tudi dovolite ali zavrnete.
         disallow: Ne dovoli povezave
         disallow_provider: Ne dovoli izdajatelja
@@ -943,6 +978,10 @@ sl:
       statuses:
         allow: Dovoli objavo
         allow_account: Dovoli avtorja
+        confirm_allow: Ali ste prepričani, da želite dopustiti izbrana stanja?
+        confirm_allow_account: Ali ste prepričani, da želite dopustiti izbrane račune?
+        confirm_disallow: Ali ste prepričani, da želite prepovedati izbrana stanja?
+        confirm_disallow_account: Ali ste prepričani, da želite prepovedati izbrane račune?
         description_html: To so objave, za katere vaš strežnik ve, da so trenutno v skupni rabi in med priljubljenimi. Vašim novim uporabnikom in uporabnikom, ki se vračajo, lahko pomaga najti več oseb, ki jim bodo sledili. Nobena objava ni javno prikazana, dokler avtorja ne odobrite in avtor ne dovoli, da se njegov račun predlaga drugim. Posamezne objave lahko tudi dovolite ali zavrnete.
         disallow: Ne dovoli objave
         disallow_account: Ne dovoli avtorja
@@ -979,7 +1018,7 @@ sl:
           one: Uporabila %{count} oseba v zadnjem tednu
           other: Uporabilo %{count} oseb v zadnjem tednu
           two: Uporabili %{count} osebi v zadnjem tednu
-      title: Trendi
+      title: Priporočila in trendi
       trending: V porastu
     warning_presets:
       add_new: Dodaj novo
@@ -1161,6 +1200,14 @@ sl:
       view_strikes: Pokaži pretekle ukrepe proti mojemu računu
     too_fast: Obrazec oddan prehitro, poskusite znova.
     use_security_key: Uporabi varnostni ključ
+  author_attribution:
+    example_title: Vzorčno besedilo
+    hint_html: Ali pišete novičke ali spletni dnevnik kje drugje poleg Mastodona? Poskrbite, da bo vaše avtorstvo pravilno navedeno, ko bo kdo delil vaše delo na Mastodonu.
+    instructions: 'Poskrbite, da bo v dokumentu HTML vašega prispevka naslednja koda:'
+    more_from_html: Več od %{name}
+    s_blog: Spletni dnevnik %{name}
+    then_instructions: Nato dodajte ime domene, kamor objavljate, v spodnje polje.
+    title: Priznanje avtorstva
   challenge:
     confirm: Nadaljuj
     hint_html: "<strong>Namig:</strong> naslednjo uro vas ne bomo več vprašali po vašem geslu."
@@ -1169,7 +1216,6 @@ sl:
   crypto:
     errors:
       invalid_key: ni veljaven ključ Ed25519 ali Curve25519
-      invalid_signature: ni veljaven podpis Ed25519
   date:
     formats:
       default: "%d %b %Y"
@@ -1235,8 +1281,6 @@ sl:
       your_appeal_approved: Vaša pritožba je bila odobrena
       your_appeal_pending: Oddali ste pritožbo
       your_appeal_rejected: Vaša pritožba je bila zavržena
-  domain_validator:
-    invalid_domain: ni veljavno ime domene
   edit_profile:
     basic_information: Osnovni podatki
     hint_html: "<strong>Prilagodite, kaj ljudje vidijo na vašem javnem profilu in poleg vaših objav.</strong> Drugi vam bodo raje sledili nazaj in z vami klepetali, če boste imeli izpolnjen profil in nastavljeno profilno sliko."
@@ -1474,6 +1518,7 @@ sl:
   media_attachments:
     validations:
       images_and_video: Videoposnetka ni mogoče priložiti objavi, ki že vsebuje slike
+      not_found: Predstavnosti %{ids} ne najdem ali pa je že pripeta k drugi objavi
       not_ready: Datotek, katerih obdelava ni dokončana, ni mogoče pripeti. Poskusite znova kmalu!
       too_many: Ni možno priložiti več kot 4 datoteke
   migrations:
@@ -1705,12 +1750,12 @@ sl:
     delete: Brisanje računa
     development: Razvoj
     edit_profile: Uredi profil
-    export: Izvoz podatkov
+    export: Izvozi
     featured_tags: Vključeni ključniki
     import: Uvozi
     import_and_export: Uvoz in izvoz
     migrate: Selitev računa
-    notifications: Obvestila po e-pošti
+    notifications: E-poštna obvestila
     preferences: Nastavitve
     profile: Profil
     relationships: Sledenja in sledilci
@@ -1759,27 +1804,12 @@ sl:
     edited_at_html: Urejeno %{date}
     errors:
       in_reply_not_found: Objava, na katero želite odgovoriti, ne obstaja.
-    open_in_web: Odpri na spletu
     over_character_limit: omejitev %{max} znakov je presežena
     pin_errors:
       direct: Objav, ki so vidne samo omenjenum uporabnikom, ni mogoče pripenjati
       limit: Pripeli ste največje število objav
       ownership: Objava nekoga drugega ne more biti pripeta
       reblog: Izpostavitev ne more biti pripeta
-    poll:
-      total_people:
-        few: "%{count} osebe"
-        one: "%{count} Oseba"
-        other: "%{count} oseb"
-        two: "%{count} osebi"
-      total_votes:
-        few: "%{count} glasovi"
-        one: "%{count} glas"
-        other: "%{count} glasov"
-        two: "%{count} glasova"
-      vote: Glasuj
-    show_more: Pokaži več
-    show_thread: Pokaži nit
     title: "%{name}: »%{quote}«"
     visibilities:
       direct: Neposredno
@@ -1980,6 +2010,7 @@ sl:
     instructions_html: Spodnjo kodo kopirajte in prilepite v HTML svojega spletnega mesta. Nato dodajte naslov svoje spletne strani v eno od dodatnih polj v svojem profilu v zavihku »Uredi profil« in shranite spremembe.
     verification: Potrditev
     verified_links: Vaše preverjene povezave
+    website_verification: Overitev spletišča
   webauthn_credentials:
     add: Dodaj nov varnostni ključ
     create:
